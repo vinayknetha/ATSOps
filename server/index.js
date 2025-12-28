@@ -392,7 +392,11 @@ app.post('/api/resume/parse', upload.single('resume'), async (req, res) => {
                   if (textItem.R) {
                     for (const run of textItem.R) {
                       if (run.T) {
-                        extractedText += decodeURIComponent(run.T) + ' ';
+                        try {
+                          extractedText += decodeURIComponent(run.T) + ' ';
+                        } catch (e) {
+                          extractedText += run.T.replace(/%20/g, ' ') + ' ';
+                        }
                       }
                     }
                   }
