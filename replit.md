@@ -54,6 +54,13 @@ docs/                # Documentation
 - `npm run format` - Format code with Prettier
 
 ## Recent Changes
+- December 28, 2025: Page-Based Navigation Architecture
+  - Replaced modals/panels with full-page navigation for better UX
+  - Added Breadcrumbs component for navigation hierarchy
+  - AddCandidatePage: Full page with "Candidates → Add New Candidate" breadcrumbs
+  - CandidateDetailPage: Full page with "Candidates → [Candidate Name]" breadcrumbs
+  - navigateTo() function manages view state and selected candidate
+  - CandidatesView uses callback props (onAddCandidate, onSelectCandidate)
 - December 28, 2025: Full Candidate Management with Database Persistence
   - Added POST /api/candidates endpoint to save new candidates to PostgreSQL
   - Candidates view now fetches real data from database instead of mock data
