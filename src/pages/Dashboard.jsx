@@ -268,6 +268,13 @@ const Icons = {
       <circle cx="12" cy="12" r="3" />
     </svg>
   ),
+  Upload: () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  ),
   Edit: () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -1018,6 +1025,15 @@ function JobsView() {
 function CandidatesView({ onSelectCandidate }) {
   const [viewMode, setViewMode] = useState('kanban');
   const [selectedStage, setSelectedStage] = useState('all');
+  const [showAddCandidateModal, setShowAddCandidateModal] = useState(false);
+
+  const handleAddCandidate = () => {
+    setShowAddCandidateModal(true);
+  };
+
+  const closeAddCandidateModal = () => {
+    setShowAddCandidateModal(false);
+  };
 
   const kanbanStages = [
     { id: 'new', name: 'New', candidates: mockCandidates.filter(c => c.status === 'New') },
@@ -1038,7 +1054,7 @@ function CandidatesView({ onSelectCandidate }) {
             <Icons.Filter />
             Filters
           </button>
-          <button style={styles.primaryBtn}>
+          <button style={styles.primaryBtn} onClick={handleAddCandidate}>
             <Icons.Plus />
             Add Candidate
           </button>
@@ -1108,7 +1124,7 @@ function CandidatesView({ onSelectCandidate }) {
                     </div>
                   </div>
                 ))}
-                <button style={styles.kanbanAddBtn}>
+                <button style={styles.kanbanAddBtn} onClick={handleAddCandidate}>
                   <Icons.Plus />
                   Add Candidate
                 </button>
@@ -1164,6 +1180,72 @@ function CandidatesView({ onSelectCandidate }) {
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Add Candidate Modal */}
+      {showAddCandidateModal && (
+        <div style={styles.modalOverlay} onClick={closeAddCandidateModal}>
+          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <h2 style={styles.modalTitle}>Add New Candidate</h2>
+              <button style={styles.modalCloseBtn} onClick={closeAddCandidateModal}>
+                <Icons.X />
+              </button>
+            </div>
+            <div style={styles.modalBody}>
+              <div style={styles.formRow}>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>First Name *</label>
+                  <input type="text" style={styles.formInput} placeholder="Enter first name" />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Last Name *</label>
+                  <input type="text" style={styles.formInput} placeholder="Enter last name" />
+                </div>
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Email *</label>
+                <input type="email" style={styles.formInput} placeholder="candidate@email.com" />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Phone</label>
+                <input type="tel" style={styles.formInput} placeholder="+91 98765 43210" />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Current Title</label>
+                <input type="text" style={styles.formInput} placeholder="e.g. Senior Software Engineer" />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Current Company</label>
+                <input type="text" style={styles.formInput} placeholder="e.g. Infosys" />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Location</label>
+                <select style={styles.formInput}>
+                  <option value="">Select city</option>
+                  <option value="bangalore">Bangalore</option>
+                  <option value="mumbai">Mumbai</option>
+                  <option value="chennai">Chennai</option>
+                  <option value="delhi">New Delhi</option>
+                  <option value="hyderabad">Hyderabad</option>
+                  <option value="pune">Pune</option>
+                </select>
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Resume</label>
+                <div style={styles.fileUpload}>
+                  <Icons.Upload />
+                  <span>Click to upload or drag and drop</span>
+                  <span style={styles.fileHint}>PDF, DOC up to 10MB</span>
+                </div>
+              </div>
+            </div>
+            <div style={styles.modalFooter}>
+              <button style={styles.secondaryBtn} onClick={closeAddCandidateModal}>Cancel</button>
+              <button style={styles.primaryBtn} onClick={closeAddCandidateModal}>Add Candidate</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -3284,5 +3366,31 @@ const styles = {
     fontSize: '14px',
     outline: 'none',
     boxSizing: 'border-box',
+  },
+
+  formRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '16px',
+  },
+
+  fileUpload: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '24px',
+    background: 'rgba(255, 255, 255, 0.02)',
+    border: '2px dashed rgba(255, 255, 255, 0.1)',
+    borderRadius: '8px',
+    color: '#8F9BB3',
+    cursor: 'pointer',
+    gap: '8px',
+    textAlign: 'center',
+  },
+
+  fileHint: {
+    fontSize: '12px',
+    color: '#6B7688',
   },
 };
