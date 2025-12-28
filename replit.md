@@ -54,6 +54,13 @@ docs/                # Documentation
 - `npm run format` - Format code with Prettier
 
 ## Recent Changes
+- December 28, 2025: Comprehensive Resume Parsing with Full Database Persistence
+  - Enhanced AI parsing to extract ALL resume details (not just basic info)
+  - Extracts: personal info, summary, skills (with proficiency), education, experience, projects, certifications
+  - Saves to respective database tables: candidates, candidate_skills, candidate_education, candidate_experience, candidate_projects
+  - Skills auto-created in skills table if not existing
+  - Robust validation handles malformed LLM output gracefully
+  - Automatic .doc to .docx conversion via LibreOffice
 - December 28, 2025: Page-Based Navigation Architecture
   - Replaced modals/panels with full-page navigation for better UX
   - Added Breadcrumbs component for navigation hierarchy
