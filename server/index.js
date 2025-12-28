@@ -9,6 +9,11 @@ const path = require('path');
 const app = express();
 app.use(express.json());
 
+const isProduction = process.env.NODE_ENV === 'production';
+if (isProduction) {
+  app.use(express.static(path.join(__dirname, '..', 'dist')));
+}
+
 const upload = multer({
   dest: '/tmp/uploads/',
   limits: { fileSize: 10 * 1024 * 1024 },
@@ -984,7 +989,13 @@ app.put('/api/candidates/:id', async (req, res) => {
   }
 });
 
-const PORT = 3001;
+if (isProduction) {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  });
+}
+
+const PORT = isProduction ? 5000 : 3001;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`API server running on port ${PORT}`);
 });
