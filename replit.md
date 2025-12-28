@@ -54,6 +54,16 @@ docs/                # Documentation
 - `npm run format` - Format code with Prettier
 
 ## Recent Changes
+- December 28, 2025: Full Candidate Profile Editing
+  - Added PUT /api/candidates/:id endpoint to update all candidate data across related tables
+  - Edit mode in CandidateDetailPage toggles between view and edit states
+  - Editable form fields for basic info: name, email, phone, title, company, location, LinkedIn, summary
+  - Add/edit/delete functionality for skills with proficiency level dropdown
+  - Add/edit/delete functionality for experience entries with all fields (title, company, dates, description)
+  - Add/edit/delete functionality for education entries (institution, degree, field, dates)
+  - Add/edit/delete functionality for projects (name, role, description, technologies)
+  - Save button persists changes to database, Cancel discards edits
+  - Location lookup no longer defaults to Bangalore - preserves existing or sets NULL
 - December 28, 2025: Complete Candidate Detail View with Resume Storage
   - Added GET /api/candidates/:id endpoint to fetch complete candidate details with all related data
   - CandidateDetailPage now fetches full details from API including skills, education, experience, projects
