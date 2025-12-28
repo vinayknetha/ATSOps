@@ -54,10 +54,15 @@ docs/                # Documentation
 - `npm run format` - Format code with Prettier
 
 ## Recent Changes
+- December 28, 2025: Full Candidate Management with Database Persistence
+  - Added POST /api/candidates endpoint to save new candidates to PostgreSQL
+  - Candidates view now fetches real data from database instead of mock data
+  - New candidates appear immediately in the UI after saving
+  - Added error handling for duplicate emails and validation
 - December 28, 2025: AI-powered Resume Parsing
   - Added /api/resume/parse endpoint for resume text extraction and AI parsing
   - Integrated OpenAI (via Replit AI Integrations) for intelligent data extraction
-  - Uses pdf-parse for PDF files and mammoth for DOCX files
+  - Uses pdf2json for PDF files and mammoth for DOCX files
   - Add Candidate modal now auto-populates fields (name, email, phone, title, company, location) from uploaded resume
   - Visual feedback during parsing with loading state and success indicators
   - Form fields highlight green when auto-populated from resume

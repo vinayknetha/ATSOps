@@ -1029,6 +1029,10 @@ function CandidatesView({ onSelectCandidate }) {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isParsing, setIsParsing] = useState(false);
   const [parseError, setParseError] = useState(null);
+  const [candidates, setCandidates] = useState([]);
+  const [isLoadingCandidates, setIsLoadingCandidates] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -1039,6 +1043,21 @@ function CandidatesView({ onSelectCandidate }) {
     location: '',
   });
   const fileInputRef = React.useRef(null);
+
+  useEffect(() => {
+    const fetchCandidates = async () => {
+      try {
+        const response = await fetch('/api/dashboard/candidates');
+        const data = await response.json();
+        setCandidates(data);
+      } catch (err) {
+        console.error('Error fetching candidates:', err);
+      } finally {
+        setIsLoadingCandidates(false);
+      }
+    };
+    fetchCandidates();
+  }, []);
 
   const handleAddCandidate = () => {
     setShowAddCandidateModal(true);
@@ -1127,11 +1146,54 @@ function CandidatesView({ onSelectCandidate }) {
     setFormData(prev => ({ ...prev, [field]: e.target.value }));
   };
 
+  const handleSaveCandidate = async () => {
+    if (!formData.firstName || !formData.lastName || !formData.email) {
+      setSaveError('Please fill in first name, last name, and email');
+      return;
+    }
+    
+    setIsSaving(true);
+    setSaveError(null);
+    
+    try {
+      const response = await fetch('/api/candidates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to save candidate');
+      }
+      
+      setCandidates(prev => [...prev, {
+        id: result.candidate.id,
+        name: `${formData.firstName} ${formData.lastName}`,
+        title: formData.currentTitle || 'N/A',
+        company: formData.currentCompany || 'N/A',
+        location: formData.location || 'India',
+        score: 0,
+        experience: 'N/A',
+        status: 'active',
+        appliedDate: 'Just now',
+        avatar: '👤'
+      }]);
+      closeAddCandidateModal();
+    } catch (err) {
+      console.error('Save candidate error:', err);
+      setSaveError(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const kanbanStages = [
-    { id: 'new', name: 'New', candidates: mockCandidates.filter(c => c.status === 'New') },
-    { id: 'screening', name: 'Screening', candidates: mockCandidates.filter(c => c.status === 'Phone Screen' || c.status === 'Review') },
-    { id: 'interview', name: 'Interview', candidates: mockCandidates.filter(c => c.status === 'Interview' || c.status === 'Technical Interview') },
-    { id: 'offer', name: 'Offer', candidates: mockCandidates.filter(c => c.status === 'Offer') },
+    { id: 'new', name: 'New', candidates: candidates.filter(c => c.status === 'new' || c.status === 'active' || !c.status) },
+    { id: 'screening', name: 'Screening', candidates: candidates.filter(c => c.status === 'screening' || c.status === 'phone_screen') },
+    { id: 'interview', name: 'Interview', candidates: candidates.filter(c => c.status === 'interview' || c.status === 'technical_interview') },
+    { id: 'offer', name: 'Offer', candidates: candidates.filter(c => c.status === 'offer' || c.status === 'offer_sent') },
   ];
 
   return (
@@ -1170,7 +1232,7 @@ function CandidatesView({ onSelectCandidate }) {
           ))}
         </div>
         <div style={styles.candidateCount}>
-          Showing <strong>{mockCandidates.length}</strong> candidates
+          Showing <strong>{candidates.length}</strong> candidates
         </div>
       </div>
 
@@ -1202,7 +1264,7 @@ function CandidatesView({ onSelectCandidate }) {
                     <p style={styles.kanbanCardTitle}>{candidate.title}</p>
                     <p style={styles.kanbanCardCompany}>{candidate.company}</p>
                     <div style={styles.kanbanCardSkills}>
-                      {candidate.skills.slice(0, 3).map((skill, idx) => (
+                      {(candidate.skills || []).slice(0, 3).map((skill, idx) => (
                         <span key={idx} style={styles.skillTag}>{skill}</span>
                       ))}
                     </div>
@@ -1229,7 +1291,7 @@ function CandidatesView({ onSelectCandidate }) {
       {/* List View */}
       {viewMode === 'list' && (
         <div style={styles.candidatesListView}>
-          {mockCandidates.map((candidate) => (
+          {candidates.map((candidate) => (
             <div 
               key={candidate.id} 
               style={styles.candidateListItem}
@@ -1247,7 +1309,7 @@ function CandidatesView({ onSelectCandidate }) {
                 </span>
               </div>
               <div style={styles.candidateListSkills}>
-                {candidate.skills.slice(0, 3).map((skill, idx) => (
+                {(candidate.skills || []).slice(0, 3).map((skill, idx) => (
                   <span key={idx} style={styles.skillTagSmall}>{skill}</span>
                 ))}
               </div>
@@ -1262,8 +1324,8 @@ function CandidatesView({ onSelectCandidate }) {
               </div>
               <div style={{
                 ...styles.candidateListStatus,
-                background: candidate.status === 'Offer' ? '#00E5A022' : candidate.status.includes('Interview') ? '#00D4FF22' : '#7B61FF22',
-                color: candidate.status === 'Offer' ? '#00E5A0' : candidate.status.includes('Interview') ? '#00D4FF' : '#7B61FF',
+                background: (candidate.status || '').includes('Offer') ? '#00E5A022' : (candidate.status || '').includes('Interview') ? '#00D4FF22' : '#7B61FF22',
+                color: (candidate.status || '').includes('Offer') ? '#00E5A0' : (candidate.status || '').includes('Interview') ? '#00D4FF' : '#7B61FF',
               }}>
                 {candidate.status}
               </div>
@@ -1430,9 +1492,20 @@ function CandidatesView({ onSelectCandidate }) {
                 />
               </div>
             </div>
+            {saveError && (
+              <div style={{color: '#ef4444', fontSize: '0.875rem', padding: '0 1.5rem', marginBottom: '-0.5rem'}}>
+                {saveError}
+              </div>
+            )}
             <div style={styles.modalFooter}>
               <button style={styles.secondaryBtn} onClick={closeAddCandidateModal}>Cancel</button>
-              <button style={styles.primaryBtn} onClick={closeAddCandidateModal}>Add Candidate</button>
+              <button 
+                style={{...styles.primaryBtn, opacity: isSaving ? 0.7 : 1}} 
+                onClick={handleSaveCandidate}
+                disabled={isSaving}
+              >
+                {isSaving ? 'Saving...' : 'Add Candidate'}
+              </button>
             </div>
           </div>
         </div>
@@ -1446,6 +1519,8 @@ function CandidatesView({ onSelectCandidate }) {
 // ============================================================================
 function CandidateDetailPanel({ candidate, onClose }) {
   const [activeTab, setActiveTab] = useState('overview');
+
+  if (!candidate) return null;
 
   return (
     <div style={styles.slideoverBackdrop} onClick={onClose}>
@@ -1529,7 +1604,7 @@ function CandidateDetailPanel({ candidate, onClose }) {
               <div style={styles.profileSection}>
                 <h4 style={styles.sectionTitle}>Skills</h4>
                 <div style={styles.skillsGrid}>
-                  {candidate.skills.map((skill, idx) => (
+                  {(candidate.skills || []).map((skill, idx) => (
                     <span key={idx} style={styles.skillTagLarge}>{skill}</span>
                   ))}
                 </div>

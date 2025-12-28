@@ -474,6 +474,44 @@ Return ONLY valid JSON, no explanation.`;
   }
 });
 
+app.post('/api/candidates', async (req, res) => {
+  try {
+    const { firstName, lastName, email, phone, currentTitle, currentCompany, location } = req.body;
+    
+    if (!firstName || !lastName || !email) {
+      return res.status(400).json({ error: 'First name, last name, and email are required' });
+    }
+    
+    const orgId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+    
+    const cityResult = await pool.query(
+      `SELECT id FROM cities WHERE LOWER(name) LIKE LOWER($1) LIMIT 1`,
+      [`%${location || 'Bangalore'}%`]
+    );
+    const cityId = cityResult.rows[0]?.id || null;
+    
+    const result = await pool.query(
+      `INSERT INTO candidates (
+        organization_id, first_name, last_name, email, phone,
+        current_title, current_company, city_id, status, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', NOW(), NOW())
+      RETURNING id, first_name, last_name, email`,
+      [orgId, firstName, lastName, email, phone || null, currentTitle || null, currentCompany || null, cityId]
+    );
+    
+    res.status(201).json({
+      success: true,
+      candidate: result.rows[0]
+    });
+  } catch (err) {
+    console.error('Error creating candidate:', err);
+    if (err.code === '23505') {
+      return res.status(400).json({ error: 'A candidate with this email already exists' });
+    }
+    res.status(500).json({ error: 'Failed to create candidate' });
+  }
+});
+
 const PORT = 3001;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`API server running on port ${PORT}`);
