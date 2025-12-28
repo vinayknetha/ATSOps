@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 // A marketing website that showcases the ATS platform
 // ============================================================================
 
-export default function TalentForgeLanding() {
+export default function TalentForgeLanding({ onGetStarted }) {
   const [scrollY, setScrollY] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeFeature, setActiveFeature] = useState(0);
@@ -149,8 +149,8 @@ export default function TalentForgeLanding() {
           </div>
 
           <div style={styles.navActions}>
-            <button style={styles.loginBtn}>Log In</button>
-            <button style={styles.ctaBtn}>Start Free Trial</button>
+            <button style={styles.loginBtn} onClick={onGetStarted}>Log In</button>
+            <button style={styles.ctaBtn} onClick={onGetStarted}>Start Free Trial</button>
           </div>
         </div>
       </nav>
@@ -180,7 +180,7 @@ export default function TalentForgeLanding() {
           </p>
           
           <div style={styles.heroActions}>
-            <button style={styles.heroPrimaryBtn}>
+            <button style={styles.heroPrimaryBtn} onClick={onGetStarted}>
               Start Free Trial
               <span style={styles.btnArrow}>→</span>
             </button>
