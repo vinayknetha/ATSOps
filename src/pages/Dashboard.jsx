@@ -372,7 +372,7 @@ const mockJobs = [
   { id: 5, title: 'DevOps Engineer', department: 'Engineering', location: 'Pune', type: 'Full-time', applicants: 21, newApplicants: 3, status: 'Paused', posted: '14 days ago', salary: '₹22L - ₹35L' },
 ];
 
-const mockInterviewsData = [
+const mockInterviews = [
   { id: 1, candidate: 'Priya Sharma', position: 'Senior Software Engineer', type: 'Technical Interview', time: '10:00 AM', date: 'Today', interviewer: 'Rajesh Kumar', status: 'Scheduled', avatar: '👩‍💻' },
   { id: 2, candidate: 'Rahul Verma', position: 'Product Manager', type: 'Phone Screen', time: '2:00 PM', date: 'Today', interviewer: 'Sneha Gupta', status: 'Scheduled', avatar: '👨‍💼' },
   { id: 3, candidate: 'Kavitha Reddy', position: 'DevOps Engineer', type: 'Culture Fit', time: '11:30 AM', date: 'Tomorrow', interviewer: 'Amit Joshi', status: 'Confirmed', avatar: '👩‍🔧' },
@@ -786,6 +786,22 @@ function DashboardView() {
 function JobsView() {
   const [viewMode, setViewMode] = useState('grid');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const handleViewJob = (job) => {
+    setSelectedJob(job);
+  };
+
+  const handleEditJob = (job) => {
+    setSelectedJob(job);
+    setShowEditModal(true);
+  };
+
+  const closeModal = () => {
+    setSelectedJob(null);
+    setShowEditModal(false);
+  };
 
   return (
     <div style={styles.pageContainer}>
@@ -878,10 +894,10 @@ function JobsView() {
               </div>
             </div>
             <div style={styles.jobActions}>
-              <button style={styles.jobActionBtn}>
+              <button style={styles.jobActionBtn} onClick={() => handleViewJob(job)}>
                 <Icons.Eye /> View
               </button>
-              <button style={styles.jobActionBtn}>
+              <button style={styles.jobActionBtn} onClick={() => handleEditJob(job)}>
                 <Icons.Edit /> Edit
               </button>
             </div>
@@ -896,6 +912,102 @@ function JobsView() {
           <span style={styles.addJobText}>Post New Job</span>
         </div>
       </div>
+
+      {/* Job Detail Modal */}
+      {selectedJob && !showEditModal && (
+        <div style={styles.modalOverlay} onClick={closeModal}>
+          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <h2 style={styles.modalTitle}>{selectedJob.title}</h2>
+              <button style={styles.modalCloseBtn} onClick={closeModal}>
+                <Icons.X />
+              </button>
+            </div>
+            <div style={styles.modalBody}>
+              <div style={styles.jobDetailRow}>
+                <span style={styles.jobDetailLabel}>Department:</span>
+                <span style={styles.jobDetailValue}>{selectedJob.department}</span>
+              </div>
+              <div style={styles.jobDetailRow}>
+                <span style={styles.jobDetailLabel}>Location:</span>
+                <span style={styles.jobDetailValue}>{selectedJob.location}</span>
+              </div>
+              <div style={styles.jobDetailRow}>
+                <span style={styles.jobDetailLabel}>Type:</span>
+                <span style={styles.jobDetailValue}>{selectedJob.type}</span>
+              </div>
+              <div style={styles.jobDetailRow}>
+                <span style={styles.jobDetailLabel}>Salary:</span>
+                <span style={styles.jobDetailValue}>{selectedJob.salary}</span>
+              </div>
+              <div style={styles.jobDetailRow}>
+                <span style={styles.jobDetailLabel}>Status:</span>
+                <span style={{...styles.jobDetailValue, color: selectedJob.status === 'Active' ? '#00E5A0' : '#FFB800'}}>{selectedJob.status}</span>
+              </div>
+              <div style={styles.jobDetailRow}>
+                <span style={styles.jobDetailLabel}>Total Applicants:</span>
+                <span style={styles.jobDetailValue}>{selectedJob.applicants}</span>
+              </div>
+              <div style={styles.jobDetailRow}>
+                <span style={styles.jobDetailLabel}>New Applicants:</span>
+                <span style={{...styles.jobDetailValue, color: '#00D4FF'}}>{selectedJob.newApplicants}</span>
+              </div>
+              <div style={styles.jobDetailRow}>
+                <span style={styles.jobDetailLabel}>Posted:</span>
+                <span style={styles.jobDetailValue}>{selectedJob.posted}</span>
+              </div>
+            </div>
+            <div style={styles.modalFooter}>
+              <button style={styles.secondaryBtn} onClick={closeModal}>Close</button>
+              <button style={styles.primaryBtn} onClick={() => handleEditJob(selectedJob)}>Edit Job</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Job Modal */}
+      {selectedJob && showEditModal && (
+        <div style={styles.modalOverlay} onClick={closeModal}>
+          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <h2 style={styles.modalTitle}>Edit: {selectedJob.title}</h2>
+              <button style={styles.modalCloseBtn} onClick={closeModal}>
+                <Icons.X />
+              </button>
+            </div>
+            <div style={styles.modalBody}>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Job Title</label>
+                <input type="text" style={styles.formInput} defaultValue={selectedJob.title} />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Department</label>
+                <input type="text" style={styles.formInput} defaultValue={selectedJob.department} />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Location</label>
+                <input type="text" style={styles.formInput} defaultValue={selectedJob.location} />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Salary Range</label>
+                <input type="text" style={styles.formInput} defaultValue={selectedJob.salary} />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Status</label>
+                <select style={styles.formInput} defaultValue={selectedJob.status}>
+                  <option value="Active">Active</option>
+                  <option value="Paused">Paused</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </div>
+            </div>
+            <div style={styles.modalFooter}>
+              <button style={styles.secondaryBtn} onClick={closeModal}>Cancel</button>
+              <button style={styles.primaryBtn} onClick={closeModal}>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3066,5 +3178,111 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0, 0, 0, 0.7)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    backdropFilter: 'blur(4px)',
+  },
+
+  modalContent: {
+    background: '#0D1B2A',
+    borderRadius: '16px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    width: '100%',
+    maxWidth: '500px',
+    maxHeight: '80vh',
+    overflow: 'auto',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+  },
+
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '20px 24px',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+  },
+
+  modalTitle: {
+    fontSize: '20px',
+    fontWeight: 600,
+    color: '#fff',
+    margin: 0,
+  },
+
+  modalCloseBtn: {
+    width: '36px',
+    height: '36px',
+    background: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '8px',
+    color: '#8F9BB3',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  modalBody: {
+    padding: '24px',
+  },
+
+  modalFooter: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '12px',
+    padding: '16px 24px',
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+  },
+
+  jobDetailRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '12px 0',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+  },
+
+  jobDetailLabel: {
+    color: '#8F9BB3',
+    fontSize: '14px',
+  },
+
+  jobDetailValue: {
+    color: '#fff',
+    fontSize: '14px',
+    fontWeight: 500,
+  },
+
+  formGroup: {
+    marginBottom: '20px',
+  },
+
+  formLabel: {
+    display: 'block',
+    color: '#8F9BB3',
+    fontSize: '14px',
+    marginBottom: '8px',
+  },
+
+  formInput: {
+    width: '100%',
+    padding: '12px 16px',
+    background: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '8px',
+    color: '#fff',
+    fontSize: '14px',
+    outline: 'none',
+    boxSizing: 'border-box',
   },
 };
