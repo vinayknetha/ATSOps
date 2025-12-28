@@ -1809,6 +1809,12 @@ function CandidateDetailPage({ candidate, onBack }) {
                       style={{ width: '100%', height: '600px', marginTop: '0.5rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', background: '#fff' }}
                       title="Resume Preview"
                     />
+                  ) : (c.resume_url.toLowerCase().endsWith('.docx') || c.resume_url.toLowerCase().endsWith('.doc')) ? (
+                    <iframe 
+                      src={`https://docs.google.com/gview?url=${encodeURIComponent(window.location.origin + c.resume_url)}&embedded=true`}
+                      style={{ width: '100%', height: '600px', marginTop: '0.5rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', background: '#fff' }}
+                      title="Resume Preview"
+                    />
                   ) : (
                     <div style={{ marginTop: '0.5rem', padding: '2rem', background: '#1A2942', borderRadius: '8px', textAlign: 'center' }}>
                       <Icons.FileText style={{ width: 48, height: 48, color: '#8F9BB3', margin: '0 auto 1rem' }} />
