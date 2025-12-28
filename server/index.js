@@ -1,7 +1,6 @@
 const express = require('express');
 const { Pool } = require('pg');
 const multer = require('multer');
-const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 const OpenAI = require('openai');
 const fs = require('fs');
@@ -381,6 +380,7 @@ app.post('/api/resume/parse', upload.single('resume'), async (req, res) => {
     
     if (req.file.mimetype === 'application/pdf') {
       const dataBuffer = fs.readFileSync(filePath);
+      const pdfParse = (await import('pdf-parse')).default;
       const pdfData = await pdfParse(dataBuffer);
       text = pdfData.text;
     } else {
