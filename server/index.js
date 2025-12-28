@@ -384,10 +384,26 @@ app.post('/api/resume/parse', upload.single('resume'), async (req, res) => {
         const pdfParser = new PDFParser();
         pdfParser.on('pdfParser_dataError', (errData) => reject(errData.parserError));
         pdfParser.on('pdfParser_dataReady', (pdfData) => {
-          const rawText = pdfParser.getRawTextContent();
-          const decodedText = decodeURIComponent(rawText.replace(/\r\n/g, ' '));
-          console.log('Extracted PDF text length:', decodedText.length);
-          resolve(decodedText);
+          let extractedText = '';
+          if (pdfData && pdfData.Pages) {
+            for (const page of pdfData.Pages) {
+              if (page.Texts) {
+                for (const textItem of page.Texts) {
+                  if (textItem.R) {
+                    for (const run of textItem.R) {
+                      if (run.T) {
+                        extractedText += decodeURIComponent(run.T) + ' ';
+                      }
+                    }
+                  }
+                }
+              }
+              extractedText += '\n';
+            }
+          }
+          console.log('Extracted PDF text length:', extractedText.length);
+          console.log('First 200 chars:', extractedText.substring(0, 200));
+          resolve(extractedText);
         });
         pdfParser.loadPDF(filePath);
       });
