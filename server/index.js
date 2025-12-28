@@ -384,17 +384,35 @@ app.post('/api/resume/parse', upload.single('resume'), async (req, res) => {
     if (ext === 'doc') {
       const { execSync } = require('child_process');
       const uploadsDir = path.dirname(filePath);
+      const originalBaseName = path.basename(originalName, '.doc');
       
       try {
         execSync(`soffice --headless --convert-to docx --outdir "${uploadsDir}" "${filePath}"`, {
-          timeout: 30000
+          timeout: 60000,
+          stdio: 'pipe'
         });
         
-        const docxPath = filePath.replace(/\.doc$/i, '.docx');
-        if (fs.existsSync(docxPath)) {
-          fs.unlinkSync(filePath);
+        const possiblePaths = [
+          path.join(uploadsDir, originalBaseName + '.docx'),
+          path.join(uploadsDir, path.basename(filePath) + '.docx'),
+          filePath.replace(/\.doc$/i, '.docx')
+        ];
+        
+        let docxPath = null;
+        for (const p of possiblePaths) {
+          if (fs.existsSync(p)) {
+            docxPath = p;
+            break;
+          }
+        }
+        
+        if (docxPath) {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
           filePath = docxPath;
         } else {
+          console.error('Converted file not found. Checked:', possiblePaths);
           return res.status(400).json({ 
             error: 'Could not convert .doc file. Please try uploading a .docx or .pdf file instead.' 
           });
