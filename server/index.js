@@ -379,13 +379,33 @@ app.post('/api/resume/parse', upload.single('resume'), async (req, res) => {
     const originalName = req.file.originalname || '';
     const ext = originalName.toLowerCase().split('.').pop();
     
-    if (ext === 'doc') {
-      return res.status(400).json({ 
-        error: 'Old .doc format is not supported. Please convert your resume to .docx or .pdf format and try again.' 
-      });
-    }
-    
     let text = '';
+    
+    if (ext === 'doc') {
+      const { execSync } = require('child_process');
+      const uploadsDir = path.dirname(filePath);
+      
+      try {
+        execSync(`soffice --headless --convert-to docx --outdir "${uploadsDir}" "${filePath}"`, {
+          timeout: 30000
+        });
+        
+        const docxPath = filePath.replace(/\.doc$/i, '.docx');
+        if (fs.existsSync(docxPath)) {
+          fs.unlinkSync(filePath);
+          filePath = docxPath;
+        } else {
+          return res.status(400).json({ 
+            error: 'Could not convert .doc file. Please try uploading a .docx or .pdf file instead.' 
+          });
+        }
+      } catch (convertErr) {
+        console.error('LibreOffice conversion error:', convertErr);
+        return res.status(400).json({ 
+          error: 'Could not convert .doc file. Please try uploading a .docx or .pdf file instead.' 
+        });
+      }
+    }
     
     if (req.file.mimetype === 'application/pdf' || ext === 'pdf') {
       const PDFParser = require('pdf2json');
