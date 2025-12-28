@@ -1562,8 +1562,12 @@ function CandidateDetailPage({ candidate, onBack }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [fullCandidate, setFullCandidate] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [editData, setEditData] = useState(null);
 
-  useEffect(() => {
+  const fetchCandidate = () => {
     if (candidate?.id) {
       setLoading(true);
       fetch(`/api/candidates/${candidate.id}`)
@@ -1577,7 +1581,147 @@ function CandidateDetailPage({ candidate, onBack }) {
           setLoading(false);
         });
     }
+  };
+
+  useEffect(() => {
+    fetchCandidate();
   }, [candidate?.id]);
+
+  const startEditing = () => {
+    const c = fullCandidate || candidate;
+    setEditData({
+      firstName: c.first_name || '',
+      lastName: c.last_name || '',
+      email: c.email || '',
+      phone: c.phone || '',
+      currentTitle: c.current_title || '',
+      currentCompany: c.current_company || '',
+      location: c.city_name || '',
+      linkedinUrl: c.linkedin_url || '',
+      portfolioUrl: c.portfolio_url || '',
+      summary: c.profile_summary || '',
+      skills: (c.skills || []).map(s => ({ skill_name: s.skill_name || s, proficiency_level: s.proficiency_level || 'intermediate', years_of_experience: s.years_of_experience || null })),
+      experience: (c.experience || []).map(e => ({ ...e })),
+      education: (c.education || []).map(e => ({ ...e })),
+      projects: (c.projects || []).map(p => ({ ...p, technologies: p.technologies || [] })),
+    });
+    setIsEditing(true);
+    setSaveError(null);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditData(null);
+    setSaveError(null);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const response = await fetch(`/api/candidates/${candidate.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editData),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to save');
+      setIsEditing(false);
+      fetchCandidate();
+    } catch (err) {
+      setSaveError(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const updateEditField = (field, value) => {
+    setEditData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const addExperience = () => {
+    setEditData(prev => ({
+      ...prev,
+      experience: [...prev.experience, { title: '', company_name: '', location_text: '', start_date: '', end_date: '', is_current: false, description: '' }]
+    }));
+  };
+
+  const removeExperience = (index) => {
+    setEditData(prev => ({
+      ...prev,
+      experience: prev.experience.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateExperience = (index, field, value) => {
+    setEditData(prev => ({
+      ...prev,
+      experience: prev.experience.map((exp, i) => i === index ? { ...exp, [field]: value } : exp)
+    }));
+  };
+
+  const addEducation = () => {
+    setEditData(prev => ({
+      ...prev,
+      education: [...prev.education, { institution_name: '', degree_name: '', field_of_study_text: '', start_date: '', end_date: '', is_current: false }]
+    }));
+  };
+
+  const removeEducation = (index) => {
+    setEditData(prev => ({
+      ...prev,
+      education: prev.education.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateEducation = (index, field, value) => {
+    setEditData(prev => ({
+      ...prev,
+      education: prev.education.map((edu, i) => i === index ? { ...edu, [field]: value } : edu)
+    }));
+  };
+
+  const addSkill = () => {
+    setEditData(prev => ({
+      ...prev,
+      skills: [...prev.skills, { skill_name: '', proficiency_level: 'intermediate', years_of_experience: null }]
+    }));
+  };
+
+  const removeSkill = (index) => {
+    setEditData(prev => ({
+      ...prev,
+      skills: prev.skills.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateSkill = (index, field, value) => {
+    setEditData(prev => ({
+      ...prev,
+      skills: prev.skills.map((skill, i) => i === index ? { ...skill, [field]: value } : skill)
+    }));
+  };
+
+  const addProject = () => {
+    setEditData(prev => ({
+      ...prev,
+      projects: [...prev.projects, { name: '', role: '', description: '', technologies: [] }]
+    }));
+  };
+
+  const removeProject = (index) => {
+    setEditData(prev => ({
+      ...prev,
+      projects: prev.projects.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateProject = (index, field, value) => {
+    setEditData(prev => ({
+      ...prev,
+      projects: prev.projects.map((proj, i) => i === index ? { ...proj, [field]: value } : proj)
+    }));
+  };
 
   if (!candidate) {
     return (
@@ -1623,16 +1767,33 @@ function CandidateDetailPage({ candidate, onBack }) {
           </div>
         </div>
         <div style={styles.candidateDetailActions}>
-          <button style={styles.secondaryBtn}>
-            <Icons.Mail />
-            Email
-          </button>
-          <button style={styles.primaryBtn}>
-            <Icons.Calendar />
-            Schedule Interview
-          </button>
+          {isEditing ? (
+            <>
+              <button style={styles.secondaryBtn} onClick={cancelEditing} disabled={isSaving}>Cancel</button>
+              <button style={{...styles.primaryBtn, opacity: isSaving ? 0.7 : 1}} onClick={handleSave} disabled={isSaving}>
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </>
+          ) : (
+            <>
+              <button style={styles.secondaryBtn} onClick={startEditing}>
+                <Icons.Edit />
+                Edit
+              </button>
+              <button style={styles.primaryBtn}>
+                <Icons.Calendar />
+                Schedule Interview
+              </button>
+            </>
+          )}
         </div>
       </div>
+      
+      {saveError && (
+        <div style={{color: '#ef4444', fontSize: '0.875rem', marginTop: '0.5rem', padding: '0.75rem', background: 'rgba(239,68,68,0.1)', borderRadius: '8px'}}>
+          {saveError}
+        </div>
+      )}
 
       <div style={styles.candidateDetailScore}>
         <div style={styles.scoreCircle}>
@@ -1671,7 +1832,145 @@ function CandidateDetailPage({ candidate, onBack }) {
       <div style={styles.profileContent}>
         {loading && <p style={{ color: '#8F9BB3' }}>Loading candidate details...</p>}
         
-        {activeTab === 'overview' && !loading && (
+        {activeTab === 'overview' && !loading && isEditing && editData && (
+          <>
+            <div style={styles.profileSection}>
+              <h4 style={styles.sectionTitle}>Basic Information</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>First Name</label>
+                  <input style={styles.formInput} value={editData.firstName} onChange={e => updateEditField('firstName', e.target.value)} />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Last Name</label>
+                  <input style={styles.formInput} value={editData.lastName} onChange={e => updateEditField('lastName', e.target.value)} />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Email</label>
+                  <input style={styles.formInput} type="email" value={editData.email} onChange={e => updateEditField('email', e.target.value)} />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Phone</label>
+                  <input style={styles.formInput} value={editData.phone} onChange={e => updateEditField('phone', e.target.value)} />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Current Title</label>
+                  <input style={styles.formInput} value={editData.currentTitle} onChange={e => updateEditField('currentTitle', e.target.value)} />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Current Company</label>
+                  <input style={styles.formInput} value={editData.currentCompany} onChange={e => updateEditField('currentCompany', e.target.value)} />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Location</label>
+                  <input style={styles.formInput} value={editData.location} onChange={e => updateEditField('location', e.target.value)} />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>LinkedIn URL</label>
+                  <input style={styles.formInput} value={editData.linkedinUrl} onChange={e => updateEditField('linkedinUrl', e.target.value)} />
+                </div>
+              </div>
+              <div style={{...styles.formGroup, marginTop: '1rem'}}>
+                <label style={styles.formLabel}>Summary</label>
+                <textarea style={{...styles.formInput, minHeight: '100px'}} value={editData.summary} onChange={e => updateEditField('summary', e.target.value)} />
+              </div>
+            </div>
+
+            <div style={styles.profileSection}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h4 style={styles.sectionTitle}>Skills ({editData.skills.length})</h4>
+                <button style={styles.secondaryBtnSm} onClick={addSkill}><Icons.Plus /> Add Skill</button>
+              </div>
+              {editData.skills.map((skill, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                  <input style={{...styles.formInput, flex: 2}} placeholder="Skill name" value={skill.skill_name} onChange={e => updateSkill(idx, 'skill_name', e.target.value)} />
+                  <select style={{...styles.formInput, flex: 1}} value={skill.proficiency_level} onChange={e => updateSkill(idx, 'proficiency_level', e.target.value)}>
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                    <option value="expert">Expert</option>
+                  </select>
+                  <button style={{...styles.secondaryBtnSm, color: '#ef4444'}} onClick={() => removeSkill(idx)}><Icons.Trash /></button>
+                </div>
+              ))}
+            </div>
+
+            <div style={styles.profileSection}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h4 style={styles.sectionTitle}>Experience ({editData.experience.length})</h4>
+                <button style={styles.secondaryBtnSm} onClick={addExperience}><Icons.Plus /> Add Experience</button>
+              </div>
+              {editData.experience.map((exp, idx) => (
+                <div key={idx} style={{ padding: '1rem', background: '#1A2942', borderRadius: '8px', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ color: '#8F9BB3', fontSize: '0.875rem' }}>Experience #{idx + 1}</span>
+                    <button style={{...styles.secondaryBtnSm, color: '#ef4444'}} onClick={() => removeExperience(idx)}><Icons.Trash /> Remove</button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <input style={styles.formInput} placeholder="Job Title" value={exp.title || ''} onChange={e => updateExperience(idx, 'title', e.target.value)} />
+                    <input style={styles.formInput} placeholder="Company" value={exp.company_name || ''} onChange={e => updateExperience(idx, 'company_name', e.target.value)} />
+                    <input style={styles.formInput} placeholder="Location" value={exp.location_text || ''} onChange={e => updateExperience(idx, 'location_text', e.target.value)} />
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input style={styles.formInput} type="date" value={exp.start_date ? exp.start_date.split('T')[0] : ''} onChange={e => updateExperience(idx, 'start_date', e.target.value)} />
+                      <input style={styles.formInput} type="date" value={exp.end_date ? exp.end_date.split('T')[0] : ''} onChange={e => updateExperience(idx, 'end_date', e.target.value)} disabled={exp.is_current} />
+                    </div>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#8F9BB3', marginTop: '0.5rem', fontSize: '0.875rem' }}>
+                    <input type="checkbox" checked={exp.is_current || false} onChange={e => updateExperience(idx, 'is_current', e.target.checked)} /> Current Position
+                  </label>
+                  <textarea style={{...styles.formInput, marginTop: '0.5rem', minHeight: '60px'}} placeholder="Description" value={exp.description || ''} onChange={e => updateExperience(idx, 'description', e.target.value)} />
+                </div>
+              ))}
+            </div>
+
+            <div style={styles.profileSection}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h4 style={styles.sectionTitle}>Education ({editData.education.length})</h4>
+                <button style={styles.secondaryBtnSm} onClick={addEducation}><Icons.Plus /> Add Education</button>
+              </div>
+              {editData.education.map((edu, idx) => (
+                <div key={idx} style={{ padding: '1rem', background: '#1A2942', borderRadius: '8px', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ color: '#8F9BB3', fontSize: '0.875rem' }}>Education #{idx + 1}</span>
+                    <button style={{...styles.secondaryBtnSm, color: '#ef4444'}} onClick={() => removeEducation(idx)}><Icons.Trash /> Remove</button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <input style={styles.formInput} placeholder="Institution" value={edu.institution_name || ''} onChange={e => updateEducation(idx, 'institution_name', e.target.value)} />
+                    <input style={styles.formInput} placeholder="Degree" value={edu.degree_name || ''} onChange={e => updateEducation(idx, 'degree_name', e.target.value)} />
+                    <input style={styles.formInput} placeholder="Field of Study" value={edu.field_of_study_text || ''} onChange={e => updateEducation(idx, 'field_of_study_text', e.target.value)} />
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input style={styles.formInput} type="date" value={edu.start_date ? edu.start_date.split('T')[0] : ''} onChange={e => updateEducation(idx, 'start_date', e.target.value)} />
+                      <input style={styles.formInput} type="date" value={edu.end_date ? edu.end_date.split('T')[0] : ''} onChange={e => updateEducation(idx, 'end_date', e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={styles.profileSection}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h4 style={styles.sectionTitle}>Projects ({editData.projects.length})</h4>
+                <button style={styles.secondaryBtnSm} onClick={addProject}><Icons.Plus /> Add Project</button>
+              </div>
+              {editData.projects.map((proj, idx) => (
+                <div key={idx} style={{ padding: '1rem', background: '#1A2942', borderRadius: '8px', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ color: '#8F9BB3', fontSize: '0.875rem' }}>Project #{idx + 1}</span>
+                    <button style={{...styles.secondaryBtnSm, color: '#ef4444'}} onClick={() => removeProject(idx)}><Icons.Trash /> Remove</button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <input style={styles.formInput} placeholder="Project Name" value={proj.name || ''} onChange={e => updateProject(idx, 'name', e.target.value)} />
+                    <input style={styles.formInput} placeholder="Role" value={proj.role || ''} onChange={e => updateProject(idx, 'role', e.target.value)} />
+                  </div>
+                  <textarea style={{...styles.formInput, marginTop: '0.5rem', minHeight: '60px'}} placeholder="Description" value={proj.description || ''} onChange={e => updateProject(idx, 'description', e.target.value)} />
+                  <input style={{...styles.formInput, marginTop: '0.5rem'}} placeholder="Technologies (comma separated)" value={(proj.technologies || []).join(', ')} onChange={e => updateProject(idx, 'technologies', e.target.value.split(',').map(t => t.trim()).filter(t => t))} />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {activeTab === 'overview' && !loading && !isEditing && (
           <>
             {c.profile_summary && (
               <div style={styles.profileSection}>

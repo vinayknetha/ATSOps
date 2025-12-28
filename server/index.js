@@ -865,6 +865,125 @@ app.get('/api/candidates/:id', async (req, res) => {
 
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
+app.put('/api/candidates/:id', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { 
+      firstName, lastName, email, phone, currentTitle, currentCompany, location,
+      linkedinUrl, portfolioUrl, summary, skills, education, experience, projects
+    } = req.body;
+    
+    await client.query('BEGIN');
+    
+    let cityId = null;
+    if (location) {
+      const cityResult = await client.query(
+        `SELECT id FROM cities WHERE LOWER(name) LIKE LOWER($1) LIMIT 1`,
+        [`%${location}%`]
+      );
+      cityId = cityResult.rows[0]?.id || null;
+    }
+    
+    await client.query(`
+      UPDATE candidates SET
+        first_name = $1, last_name = $2, email = $3, phone = $4,
+        current_title = $5, current_company = $6, city_id = $7,
+        linkedin_url = $8, portfolio_url = $9, profile_summary = $10,
+        updated_at = NOW()
+      WHERE id = $11
+    `, [firstName, lastName, email, phone || null, currentTitle || null, 
+        currentCompany || null, cityId, linkedinUrl || null, portfolioUrl || null, 
+        summary || null, id]);
+    
+    await client.query('DELETE FROM candidate_skills WHERE candidate_id = $1', [id]);
+    if (skills && Array.isArray(skills)) {
+      for (let i = 0; i < skills.length; i++) {
+        const skill = skills[i];
+        const skillName = typeof skill === 'string' ? skill : skill.skill_name;
+        if (!skillName) continue;
+        
+        let skillResult = await client.query(
+          `SELECT id FROM skills WHERE LOWER(display_name) = LOWER($1) OR LOWER(canonical_name) = LOWER($1) LIMIT 1`,
+          [skillName]
+        );
+        
+        let skillId;
+        if (skillResult.rows.length === 0) {
+          const insertSkill = await client.query(
+            `INSERT INTO skills (display_name, canonical_name, created_at) VALUES ($1, $2, NOW()) RETURNING id`,
+            [skillName, skillName.toLowerCase().replace(/\s+/g, '-')]
+          );
+          skillId = insertSkill.rows[0].id;
+        } else {
+          skillId = skillResult.rows[0].id;
+        }
+        
+        await client.query(`
+          INSERT INTO candidate_skills (candidate_id, skill_id, proficiency_level, years_of_experience, sort_order)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [id, skillId, skill.proficiency_level || 'intermediate', skill.years_of_experience || null, i]);
+      }
+    }
+    
+    await client.query('DELETE FROM candidate_experience WHERE candidate_id = $1', [id]);
+    if (experience && Array.isArray(experience)) {
+      for (let i = 0; i < experience.length; i++) {
+        const exp = experience[i];
+        if (!exp.title && !exp.company_name) continue;
+        
+        await client.query(`
+          INSERT INTO candidate_experience (candidate_id, title, company_name, location_text, start_date, end_date, is_current, description, sort_order)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `, [id, exp.title || '', exp.company_name || '', exp.location_text || null,
+            exp.start_date ? parseDate(exp.start_date) : null, 
+            exp.end_date ? parseDate(exp.end_date) : null,
+            exp.is_current || false, exp.description || null, i]);
+      }
+    }
+    
+    await client.query('DELETE FROM candidate_education WHERE candidate_id = $1', [id]);
+    if (education && Array.isArray(education)) {
+      for (let i = 0; i < education.length; i++) {
+        const edu = education[i];
+        if (!edu.institution_name && !edu.degree_name) continue;
+        
+        await client.query(`
+          INSERT INTO candidate_education (candidate_id, institution_name, degree_name, field_of_study_text, start_date, end_date, is_current, sort_order)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `, [id, edu.institution_name || '', edu.degree_name || '', edu.field_of_study_text || null,
+            edu.start_date ? parseDate(edu.start_date) : null,
+            edu.end_date ? parseDate(edu.end_date) : null,
+            edu.is_current || false, i]);
+      }
+    }
+    
+    await client.query('DELETE FROM candidate_projects WHERE candidate_id = $1', [id]);
+    if (projects && Array.isArray(projects)) {
+      for (let i = 0; i < projects.length; i++) {
+        const proj = projects[i];
+        if (!proj.name) continue;
+        
+        await client.query(`
+          INSERT INTO candidate_projects (candidate_id, name, role, description, technologies, sort_order)
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `, [id, proj.name, proj.role || null, proj.description || null,
+            proj.technologies || [], i]);
+      }
+    }
+    
+    await client.query('COMMIT');
+    
+    res.json({ success: true, message: 'Candidate updated successfully' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error updating candidate:', err);
+    res.status(500).json({ error: 'Failed to update candidate' });
+  } finally {
+    client.release();
+  }
+});
+
 const PORT = 3001;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`API server running on port ${PORT}`);
