@@ -55,6 +55,18 @@ docs/                # Documentation
   - Set up development workflow
   - Configured autoscale deployment
 
+## Database
+- **PostgreSQL** with 86 tables for complete ATS functionality
+- **Extensions**: uuid-ossp, pg_trgm, unaccent
+- **India-specific data**: 
+  - 15 Indian states/territories
+  - 15 major Indian cities (Mumbai, Bangalore, Chennai, Delhi, Hyderabad, etc.)
+  - INR currency as primary
+  - 10 Indian languages (Hindi, Tamil, Telugu, Marathi, etc.)
+  - Indian job boards (Naukri, Shine, TimesJobs, Instahyre)
+  - Subscription plans with INR pricing
+
 ## Notes
-- The project includes database migration files for a PostgreSQL backend (not yet connected)
 - API specifications are documented in the api/ directory
+- Multi-tenant architecture with organization isolation
+- Full-text search enabled on candidates and jobs tables
