@@ -379,10 +379,16 @@ app.post('/api/resume/parse', upload.single('resume'), async (req, res) => {
     let text = '';
     
     if (req.file.mimetype === 'application/pdf') {
-      const dataBuffer = fs.readFileSync(filePath);
-      const { PDFParse } = require('pdf-parse');
-      const pdfData = await PDFParse(dataBuffer);
-      text = pdfData.text;
+      const PDFParser = require('pdf2json');
+      text = await new Promise((resolve, reject) => {
+        const pdfParser = new PDFParser();
+        pdfParser.on('pdfParser_dataError', (errData) => reject(errData.parserError));
+        pdfParser.on('pdfParser_dataReady', (pdfData) => {
+          const rawText = pdfParser.getRawTextContent();
+          resolve(rawText);
+        });
+        pdfParser.loadPDF(filePath);
+      });
     } else {
       const result = await mammoth.extractRawText({ path: filePath });
       text = result.value;
