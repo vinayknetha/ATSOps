@@ -1026,13 +1026,40 @@ function CandidatesView({ onSelectCandidate }) {
   const [viewMode, setViewMode] = useState('kanban');
   const [selectedStage, setSelectedStage] = useState('all');
   const [showAddCandidateModal, setShowAddCandidateModal] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const fileInputRef = React.useRef(null);
 
   const handleAddCandidate = () => {
     setShowAddCandidateModal(true);
+    setUploadedFile(null);
   };
 
   const closeAddCandidateModal = () => {
     setShowAddCandidateModal(false);
+    setUploadedFile(null);
+  };
+
+  const handleFileClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadedFile(file);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      setUploadedFile(file);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
   };
 
   const kanbanStages = [
@@ -1234,10 +1261,37 @@ function CandidatesView({ onSelectCandidate }) {
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Resume</label>
-                <div style={styles.fileUpload}>
-                  <Icons.Upload />
-                  <span>Click to upload or drag and drop</span>
-                  <span style={styles.fileHint}>PDF, DOC up to 10MB</span>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept=".pdf,.doc,.docx"
+                  style={{ display: 'none' }}
+                />
+                <div
+                  style={{
+                    ...styles.fileUpload,
+                    borderColor: uploadedFile ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+                  }}
+                  onClick={handleFileClick}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                >
+                  {uploadedFile ? (
+                    <>
+                      <Icons.Check />
+                      <span style={{ color: '#00D68F' }}>{uploadedFile.name}</span>
+                      <span style={styles.fileHint}>
+                        {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Icons.Upload />
+                      <span>Click to upload or drag and drop</span>
+                      <span style={styles.fileHint}>PDF, DOC up to 10MB</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
