@@ -1,8 +1,32 @@
 const express = require('express');
 const { Pool } = require('pg');
+const multer = require('multer');
+const pdfParse = require('pdf-parse');
+const mammoth = require('mammoth');
+const OpenAI = require('openai');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 app.use(express.json());
+
+const upload = multer({
+  dest: '/tmp/uploads/',
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PDF and DOC/DOCX are allowed.'));
+    }
+  }
+});
+
+const openai = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+});
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -344,6 +368,83 @@ function capitalizeFirst(str) {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
+
+app.post('/api/resume/parse', upload.single('resume'), async (req, res) => {
+  let filePath = null;
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    filePath = req.file.path;
+    let text = '';
+    
+    if (req.file.mimetype === 'application/pdf') {
+      const dataBuffer = fs.readFileSync(filePath);
+      const pdfData = await pdfParse(dataBuffer);
+      text = pdfData.text;
+    } else {
+      const result = await mammoth.extractRawText({ path: filePath });
+      text = result.value;
+    }
+    
+    if (!text || text.trim().length < 50) {
+      return res.status(400).json({ error: 'Could not extract text from resume. Please try a different file.' });
+    }
+    
+    const prompt = `Extract candidate information from the following resume text. Return a JSON object with these fields:
+- firstName (string): The candidate's first name
+- lastName (string): The candidate's last name  
+- email (string): Email address
+- phone (string): Phone number
+- currentTitle (string): Current or most recent job title
+- currentCompany (string): Current or most recent company name
+- location (string): City or location mentioned (prefer Indian cities if mentioned)
+
+If a field cannot be found, use an empty string.
+
+Resume text:
+${text.substring(0, 8000)}
+
+Return ONLY valid JSON, no explanation.`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.1,
+      max_tokens: 500,
+    });
+    
+    const content = response.choices[0]?.message?.content || '{}';
+    let parsed;
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      parsed = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+    } catch (e) {
+      parsed = {};
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        firstName: parsed.firstName || '',
+        lastName: parsed.lastName || '',
+        email: parsed.email || '',
+        phone: parsed.phone || '',
+        currentTitle: parsed.currentTitle || '',
+        currentCompany: parsed.currentCompany || '',
+        location: parsed.location || '',
+      }
+    });
+  } catch (err) {
+    console.error('Error parsing resume:', err);
+    res.status(500).json({ error: 'Failed to parse resume. Please try again.' });
+  } finally {
+    if (filePath && fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
+});
 
 const PORT = 3001;
 app.listen(PORT, '0.0.0.0', () => {

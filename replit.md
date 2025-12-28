@@ -54,6 +54,13 @@ docs/                # Documentation
 - `npm run format` - Format code with Prettier
 
 ## Recent Changes
+- December 28, 2025: AI-powered Resume Parsing
+  - Added /api/resume/parse endpoint for resume text extraction and AI parsing
+  - Integrated OpenAI (via Replit AI Integrations) for intelligent data extraction
+  - Uses pdf-parse for PDF files and mammoth for DOCX files
+  - Add Candidate modal now auto-populates fields (name, email, phone, title, company, location) from uploaded resume
+  - Visual feedback during parsing with loading state and success indicators
+  - Form fields highlight green when auto-populated from resume
 - December 28, 2025: Database integration for Dashboard
   - Created Express.js backend API (server/index.js) on port 3001
   - Added API endpoints: /api/dashboard/stats, candidates, jobs, interviews, pipeline, activity

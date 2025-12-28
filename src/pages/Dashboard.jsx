@@ -1027,26 +1027,86 @@ function CandidatesView({ onSelectCandidate }) {
   const [selectedStage, setSelectedStage] = useState('all');
   const [showAddCandidateModal, setShowAddCandidateModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
+  const [isParsing, setIsParsing] = useState(false);
+  const [parseError, setParseError] = useState(null);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    currentTitle: '',
+    currentCompany: '',
+    location: '',
+  });
   const fileInputRef = React.useRef(null);
 
   const handleAddCandidate = () => {
     setShowAddCandidateModal(true);
     setUploadedFile(null);
+    setParseError(null);
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      currentTitle: '',
+      currentCompany: '',
+      location: '',
+    });
   };
 
   const closeAddCandidateModal = () => {
     setShowAddCandidateModal(false);
     setUploadedFile(null);
+    setParseError(null);
   };
 
   const handleFileClick = () => {
     fileInputRef.current?.click();
   };
 
+  const parseResume = async (file) => {
+    setIsParsing(true);
+    setParseError(null);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('resume', file);
+      
+      const response = await fetch('/api/resume/parse', {
+        method: 'POST',
+        body: formDataUpload,
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to parse resume');
+      }
+      
+      if (result.success && result.data) {
+        setFormData({
+          firstName: result.data.firstName || '',
+          lastName: result.data.lastName || '',
+          email: result.data.email || '',
+          phone: result.data.phone || '',
+          currentTitle: result.data.currentTitle || '',
+          currentCompany: result.data.currentCompany || '',
+          location: result.data.location || '',
+        });
+      }
+    } catch (err) {
+      console.error('Resume parse error:', err);
+      setParseError(err.message);
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
       setUploadedFile(file);
+      parseResume(file);
     }
   };
 
@@ -1055,11 +1115,16 @@ function CandidatesView({ onSelectCandidate }) {
     const file = e.dataTransfer.files?.[0];
     if (file) {
       setUploadedFile(file);
+      parseResume(file);
     }
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
+  };
+
+  const handleInputChange = (field) => (e) => {
+    setFormData(prev => ({ ...prev, [field]: e.target.value }));
   };
 
   const kanbanStages = [
@@ -1233,66 +1298,136 @@ function CandidatesView({ onSelectCandidate }) {
                 <div
                   style={{
                     ...styles.fileUpload,
-                    borderColor: uploadedFile ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+                    borderColor: isParsing ? '#00D4FF' : uploadedFile ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+                    opacity: isParsing ? 0.7 : 1,
+                    pointerEvents: isParsing ? 'none' : 'auto',
                   }}
                   onClick={handleFileClick}
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
                 >
-                  {uploadedFile ? (
+                  {isParsing ? (
+                    <>
+                      <div style={{ animation: 'spin 1s linear infinite', width: 24, height: 24 }}>
+                        <Icons.Clock />
+                      </div>
+                      <span style={{ color: '#00D4FF' }}>Parsing resume...</span>
+                      <span style={styles.fileHint}>Extracting candidate information</span>
+                    </>
+                  ) : uploadedFile ? (
                     <>
                       <Icons.Check />
                       <span style={{ color: '#00D68F' }}>{uploadedFile.name}</span>
                       <span style={styles.fileHint}>
-                        {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                        {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB - Parsed successfully
                       </span>
                     </>
                   ) : (
                     <>
                       <Icons.Upload />
                       <span>Click to upload or drag and drop</span>
-                      <span style={styles.fileHint}>PDF, DOC up to 10MB</span>
+                      <span style={styles.fileHint}>PDF, DOC up to 10MB - Fields will auto-populate</span>
                     </>
                   )}
                 </div>
+                {parseError && (
+                  <div style={{ color: '#FF6B6B', fontSize: '12px', marginTop: '8px' }}>
+                    {parseError}
+                  </div>
+                )}
               </div>
               <div style={styles.formRow}>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>First Name *</label>
-                  <input type="text" style={styles.formInput} placeholder="Enter first name" />
+                  <input
+                    type="text"
+                    style={{
+                      ...styles.formInput,
+                      borderColor: formData.firstName ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+                    }}
+                    placeholder="Enter first name"
+                    value={formData.firstName}
+                    onChange={handleInputChange('firstName')}
+                  />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Last Name *</label>
-                  <input type="text" style={styles.formInput} placeholder="Enter last name" />
+                  <input
+                    type="text"
+                    style={{
+                      ...styles.formInput,
+                      borderColor: formData.lastName ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+                    }}
+                    placeholder="Enter last name"
+                    value={formData.lastName}
+                    onChange={handleInputChange('lastName')}
+                  />
                 </div>
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Email *</label>
-                <input type="email" style={styles.formInput} placeholder="candidate@email.com" />
+                <input
+                  type="email"
+                  style={{
+                    ...styles.formInput,
+                    borderColor: formData.email ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+                  }}
+                  placeholder="candidate@email.com"
+                  value={formData.email}
+                  onChange={handleInputChange('email')}
+                />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Phone</label>
-                <input type="tel" style={styles.formInput} placeholder="+91 98765 43210" />
+                <input
+                  type="tel"
+                  style={{
+                    ...styles.formInput,
+                    borderColor: formData.phone ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+                  }}
+                  placeholder="+91 98765 43210"
+                  value={formData.phone}
+                  onChange={handleInputChange('phone')}
+                />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Current Title</label>
-                <input type="text" style={styles.formInput} placeholder="e.g. Senior Software Engineer" />
+                <input
+                  type="text"
+                  style={{
+                    ...styles.formInput,
+                    borderColor: formData.currentTitle ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+                  }}
+                  placeholder="e.g. Senior Software Engineer"
+                  value={formData.currentTitle}
+                  onChange={handleInputChange('currentTitle')}
+                />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Current Company</label>
-                <input type="text" style={styles.formInput} placeholder="e.g. Infosys" />
+                <input
+                  type="text"
+                  style={{
+                    ...styles.formInput,
+                    borderColor: formData.currentCompany ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+                  }}
+                  placeholder="e.g. Infosys"
+                  value={formData.currentCompany}
+                  onChange={handleInputChange('currentCompany')}
+                />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Location</label>
-                <select style={styles.formInput}>
-                  <option value="">Select city</option>
-                  <option value="bangalore">Bangalore</option>
-                  <option value="mumbai">Mumbai</option>
-                  <option value="chennai">Chennai</option>
-                  <option value="delhi">New Delhi</option>
-                  <option value="hyderabad">Hyderabad</option>
-                  <option value="pune">Pune</option>
-                </select>
+                <input
+                  type="text"
+                  style={{
+                    ...styles.formInput,
+                    borderColor: formData.location ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+                  }}
+                  placeholder="e.g. Bangalore, Mumbai"
+                  value={formData.location}
+                  onChange={handleInputChange('location')}
+                />
               </div>
             </div>
             <div style={styles.modalFooter}>
