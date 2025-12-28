@@ -1063,8 +1063,10 @@ function CandidatesView({ onSelectCandidate, onAddCandidate }) {
     const fetchCandidates = async () => {
       try {
         const response = await fetch('/api/dashboard/candidates');
-        const data = await response.json();
-        setCandidates(data);
+        if (response.ok) {
+          const data = await response.json();
+          setCandidates(data);
+        }
       } catch (err) {
         console.error('Error fetching candidates:', err);
       } finally {
@@ -1571,7 +1573,10 @@ function CandidateDetailPage({ candidate, onBack }) {
     if (candidate?.id) {
       setLoading(true);
       fetch(`/api/candidates/${candidate.id}`)
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch candidate');
+          return res.json();
+        })
         .then(data => {
           setFullCandidate(data);
           setLoading(false);
