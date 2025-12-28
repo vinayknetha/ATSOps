@@ -376,9 +376,18 @@ app.post('/api/resume/parse', upload.single('resume'), async (req, res) => {
     }
     
     filePath = req.file.path;
+    const originalName = req.file.originalname || '';
+    const ext = originalName.toLowerCase().split('.').pop();
+    
+    if (ext === 'doc') {
+      return res.status(400).json({ 
+        error: 'Old .doc format is not supported. Please convert your resume to .docx or .pdf format and try again.' 
+      });
+    }
+    
     let text = '';
     
-    if (req.file.mimetype === 'application/pdf') {
+    if (req.file.mimetype === 'application/pdf' || ext === 'pdf') {
       const PDFParser = require('pdf2json');
       text = await new Promise((resolve, reject) => {
         const pdfParser = new PDFParser();
