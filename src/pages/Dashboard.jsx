@@ -389,6 +389,25 @@ const mockInterviews = [
 // ============================================================================
 // MAIN APPLICATION
 // ============================================================================
+function Breadcrumbs({ items, onNavigate }) {
+  return (
+    <div style={styles.breadcrumbs}>
+      {items.map((item, index) => (
+        <React.Fragment key={index}>
+          {index > 0 && <span style={styles.breadcrumbSeparator}>/</span>}
+          {item.onClick ? (
+            <button style={styles.breadcrumbLink} onClick={item.onClick}>
+              {item.label}
+            </button>
+          ) : (
+            <span style={styles.breadcrumbCurrent}>{item.label}</span>
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
 export default function TalentForgeATS() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -397,6 +416,11 @@ export default function TalentForgeATS() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [animationReady, setAnimationReady] = useState(false);
+
+  const navigateTo = (view, candidate = null) => {
+    setCurrentView(view);
+    setSelectedCandidate(candidate);
+  };
 
   useEffect(() => {
     setTimeout(() => setAnimationReady(true), 100);
@@ -534,7 +558,9 @@ export default function TalentForgeATS() {
         <div style={styles.pageContent}>
           {currentView === 'dashboard' && <DashboardView />}
           {currentView === 'jobs' && <JobsView />}
-          {currentView === 'candidates' && <CandidatesView onSelectCandidate={setSelectedCandidate} />}
+          {currentView === 'candidates' && <CandidatesView onSelectCandidate={(c) => navigateTo('candidateDetail', c)} onAddCandidate={() => navigateTo('addCandidate')} />}
+          {currentView === 'addCandidate' && <AddCandidatePage onBack={() => navigateTo('candidates')} onSave={() => navigateTo('candidates')} />}
+          {currentView === 'candidateDetail' && <CandidateDetailPage candidate={selectedCandidate} onBack={() => navigateTo('candidates')} />}
           {currentView === 'applications' && <ApplicationsView />}
           {currentView === 'interviews' && <InterviewsView />}
           {currentView === 'offers' && <OffersView />}
@@ -542,14 +568,6 @@ export default function TalentForgeATS() {
           {currentView === 'settings' && <SettingsView />}
         </div>
       </main>
-
-      {/* Candidate Detail Slide-over */}
-      {selectedCandidate && (
-        <CandidateDetailPanel 
-          candidate={selectedCandidate} 
-          onClose={() => setSelectedCandidate(null)} 
-        />
-      )}
     </div>
   );
 }
@@ -1022,27 +1040,11 @@ function JobsView() {
 // ============================================================================
 // CANDIDATES VIEW
 // ============================================================================
-function CandidatesView({ onSelectCandidate }) {
+function CandidatesView({ onSelectCandidate, onAddCandidate }) {
   const [viewMode, setViewMode] = useState('kanban');
   const [selectedStage, setSelectedStage] = useState('all');
-  const [showAddCandidateModal, setShowAddCandidateModal] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState(null);
-  const [isParsing, setIsParsing] = useState(false);
-  const [parseError, setParseError] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState(null);
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    currentTitle: '',
-    currentCompany: '',
-    location: '',
-  });
-  const fileInputRef = React.useRef(null);
 
   useEffect(() => {
     const fetchCandidates = async () => {
@@ -1059,26 +1061,177 @@ function CandidatesView({ onSelectCandidate }) {
     fetchCandidates();
   }, []);
 
-  const handleAddCandidate = () => {
-    setShowAddCandidateModal(true);
-    setUploadedFile(null);
-    setParseError(null);
-    setFormData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      currentTitle: '',
-      currentCompany: '',
-      location: '',
-    });
-  };
+  const kanbanStages = [
+    { id: 'new', name: 'New', candidates: candidates.filter(c => c.status === 'new' || c.status === 'active' || !c.status) },
+    { id: 'screening', name: 'Screening', candidates: candidates.filter(c => c.status === 'screening' || c.status === 'phone_screen') },
+    { id: 'interview', name: 'Interview', candidates: candidates.filter(c => c.status === 'interview' || c.status === 'technical_interview') },
+    { id: 'offer', name: 'Offer', candidates: candidates.filter(c => c.status === 'offer' || c.status === 'offer_sent') },
+  ];
 
-  const closeAddCandidateModal = () => {
-    setShowAddCandidateModal(false);
-    setUploadedFile(null);
-    setParseError(null);
-  };
+  return (
+    <div style={styles.pageContainer}>
+      <div style={styles.pageHeader}>
+        <div>
+          <h1 style={styles.pageTitle}>Candidates</h1>
+          <p style={styles.pageSubtitle}>Track and manage your candidate pipeline</p>
+        </div>
+        <div style={styles.headerActions}>
+          <button style={styles.secondaryBtn}>
+            <Icons.Filter />
+            Filters
+          </button>
+          <button style={styles.primaryBtn} onClick={onAddCandidate}>
+            <Icons.Plus />
+            Add Candidate
+          </button>
+        </div>
+      </div>
+
+      {/* View Toggle */}
+      <div style={styles.viewModeBar}>
+        <div style={styles.viewModeToggle}>
+          {['kanban', 'list', 'table'].map((mode) => (
+            <button
+              key={mode}
+              style={{
+                ...styles.viewModeBtn,
+                ...(viewMode === mode ? styles.viewModeBtnActive : {})
+              }}
+              onClick={() => setViewMode(mode)}
+            >
+              {mode.charAt(0).toUpperCase() + mode.slice(1)}
+            </button>
+          ))}
+        </div>
+        <div style={styles.candidateCount}>
+          Showing <strong>{candidates.length}</strong> candidates
+        </div>
+      </div>
+
+      {/* Kanban Board */}
+      {viewMode === 'kanban' && (
+        <div style={styles.kanbanBoard}>
+          {kanbanStages.map((stage) => (
+            <div key={stage.id} style={styles.kanbanColumn}>
+              <div style={styles.kanbanColumnHeader}>
+                <span style={styles.kanbanColumnTitle}>{stage.name}</span>
+                <span style={styles.kanbanColumnCount}>{stage.candidates.length}</span>
+              </div>
+              <div style={styles.kanbanColumnContent}>
+                {stage.candidates.map((candidate) => (
+                  <div 
+                    key={candidate.id} 
+                    style={styles.kanbanCard}
+                    onClick={() => onSelectCandidate(candidate)}
+                    className="kanban-card"
+                  >
+                    <div style={styles.kanbanCardHeader}>
+                      <div style={styles.kanbanCardAvatar}>{candidate.avatar}</div>
+                      <div style={styles.kanbanCardScore}>
+                        <Icons.Star />
+                        {candidate.score}
+                      </div>
+                    </div>
+                    <h4 style={styles.kanbanCardName}>{candidate.name}</h4>
+                    <p style={styles.kanbanCardTitle}>{candidate.title}</p>
+                    <p style={styles.kanbanCardCompany}>{candidate.company}</p>
+                    <div style={styles.kanbanCardSkills}>
+                      {(candidate.skills || []).slice(0, 3).map((skill, idx) => (
+                        <span key={idx} style={styles.skillTag}>{skill}</span>
+                      ))}
+                    </div>
+                    <div style={styles.kanbanCardFooter}>
+                      <span style={styles.kanbanCardDate}>
+                        <Icons.Clock /> {candidate.appliedDate}
+                      </span>
+                      <button style={styles.kanbanCardAction}>
+                        <Icons.MoreVertical />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button style={styles.kanbanAddBtn} onClick={onAddCandidate}>
+                  <Icons.Plus />
+                  Add Candidate
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* List View */}
+      {viewMode === 'list' && (
+        <div style={styles.candidatesListView}>
+          {candidates.map((candidate) => (
+            <div 
+              key={candidate.id} 
+              style={styles.candidateListItem}
+              onClick={() => onSelectCandidate(candidate)}
+              className="candidate-list-item"
+            >
+              <div style={styles.candidateListAvatar}>{candidate.avatar}</div>
+              <div style={styles.candidateListInfo}>
+                <h4 style={styles.candidateListName}>{candidate.name}</h4>
+                <p style={styles.candidateListTitle}>{candidate.title} at {candidate.company}</p>
+              </div>
+              <div style={styles.candidateListMeta}>
+                <span style={styles.candidateListLocation}>
+                  <Icons.MapPin /> {candidate.location}
+                </span>
+              </div>
+              <div style={styles.candidateListSkills}>
+                {(candidate.skills || []).slice(0, 3).map((skill, idx) => (
+                  <span key={idx} style={styles.skillTagSmall}>{skill}</span>
+                ))}
+              </div>
+              <div style={styles.candidateListScore}>
+                <div style={{
+                  ...styles.scoreBar,
+                  '--score-width': `${candidate.score}%`,
+                  '--score-color': candidate.score >= 90 ? '#00E5A0' : candidate.score >= 80 ? '#00D4FF' : '#FFB800',
+                }}>
+                  <span>{candidate.score}</span>
+                </div>
+              </div>
+              <div style={{
+                ...styles.candidateListStatus,
+                background: (candidate.status || '').includes('Offer') ? '#00E5A022' : (candidate.status || '').includes('Interview') ? '#00D4FF22' : '#7B61FF22',
+                color: (candidate.status || '').includes('Offer') ? '#00E5A0' : (candidate.status || '').includes('Interview') ? '#00D4FF' : '#7B61FF',
+              }}>
+                {candidate.status}
+              </div>
+              <button style={styles.candidateListAction}>
+                <Icons.ChevronRight />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      </div>
+  );
+}
+
+// ============================================================================
+// ADD CANDIDATE PAGE
+// ============================================================================
+function AddCandidatePage({ onBack, onSave }) {
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [isParsing, setIsParsing] = useState(false);
+  const [parseError, setParseError] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    currentTitle: '',
+    currentCompany: '',
+    location: '',
+  });
+  const fileInputRef = React.useRef(null);
 
   const handleFileClick = () => {
     fileInputRef.current?.click();
@@ -1168,19 +1321,7 @@ function CandidatesView({ onSelectCandidate }) {
         throw new Error(result.error || 'Failed to save candidate');
       }
       
-      setCandidates(prev => [...prev, {
-        id: result.candidate.id,
-        name: `${formData.firstName} ${formData.lastName}`,
-        title: formData.currentTitle || 'N/A',
-        company: formData.currentCompany || 'N/A',
-        location: formData.location || 'India',
-        score: 0,
-        experience: 'N/A',
-        status: 'active',
-        appliedDate: 'Just now',
-        avatar: '👤'
-      }]);
-      closeAddCandidateModal();
+      onSave();
     } catch (err) {
       console.error('Save candidate error:', err);
       setSaveError(err.message);
@@ -1189,333 +1330,354 @@ function CandidatesView({ onSelectCandidate }) {
     }
   };
 
-  const kanbanStages = [
-    { id: 'new', name: 'New', candidates: candidates.filter(c => c.status === 'new' || c.status === 'active' || !c.status) },
-    { id: 'screening', name: 'Screening', candidates: candidates.filter(c => c.status === 'screening' || c.status === 'phone_screen') },
-    { id: 'interview', name: 'Interview', candidates: candidates.filter(c => c.status === 'interview' || c.status === 'technical_interview') },
-    { id: 'offer', name: 'Offer', candidates: candidates.filter(c => c.status === 'offer' || c.status === 'offer_sent') },
+  const breadcrumbItems = [
+    { label: 'Candidates', onClick: onBack },
+    { label: 'Add New Candidate' }
   ];
 
   return (
     <div style={styles.pageContainer}>
+      <Breadcrumbs items={breadcrumbItems} />
+      
       <div style={styles.pageHeader}>
         <div>
-          <h1 style={styles.pageTitle}>Candidates</h1>
-          <p style={styles.pageSubtitle}>Track and manage your candidate pipeline</p>
-        </div>
-        <div style={styles.headerActions}>
-          <button style={styles.secondaryBtn}>
-            <Icons.Filter />
-            Filters
-          </button>
-          <button style={styles.primaryBtn} onClick={handleAddCandidate}>
-            <Icons.Plus />
-            Add Candidate
-          </button>
+          <h1 style={styles.pageTitle}>Add New Candidate</h1>
+          <p style={styles.pageSubtitle}>Upload a resume to auto-populate fields or enter manually</p>
         </div>
       </div>
 
-      {/* View Toggle */}
-      <div style={styles.viewModeBar}>
-        <div style={styles.viewModeToggle}>
-          {['kanban', 'list', 'table'].map((mode) => (
-            <button
-              key={mode}
-              style={{
-                ...styles.viewModeBtn,
-                ...(viewMode === mode ? styles.viewModeBtnActive : {})
-              }}
-              onClick={() => setViewMode(mode)}
-            >
-              {mode.charAt(0).toUpperCase() + mode.slice(1)}
-            </button>
-          ))}
-        </div>
-        <div style={styles.candidateCount}>
-          Showing <strong>{candidates.length}</strong> candidates
-        </div>
-      </div>
-
-      {/* Kanban Board */}
-      {viewMode === 'kanban' && (
-        <div style={styles.kanbanBoard}>
-          {kanbanStages.map((stage) => (
-            <div key={stage.id} style={styles.kanbanColumn}>
-              <div style={styles.kanbanColumnHeader}>
-                <span style={styles.kanbanColumnTitle}>{stage.name}</span>
-                <span style={styles.kanbanColumnCount}>{stage.candidates.length}</span>
-              </div>
-              <div style={styles.kanbanColumnContent}>
-                {stage.candidates.map((candidate) => (
-                  <div 
-                    key={candidate.id} 
-                    style={styles.kanbanCard}
-                    onClick={() => onSelectCandidate(candidate)}
-                    className="kanban-card"
-                  >
-                    <div style={styles.kanbanCardHeader}>
-                      <div style={styles.kanbanCardAvatar}>{candidate.avatar}</div>
-                      <div style={styles.kanbanCardScore}>
-                        <Icons.Star />
-                        {candidate.score}
-                      </div>
-                    </div>
-                    <h4 style={styles.kanbanCardName}>{candidate.name}</h4>
-                    <p style={styles.kanbanCardTitle}>{candidate.title}</p>
-                    <p style={styles.kanbanCardCompany}>{candidate.company}</p>
-                    <div style={styles.kanbanCardSkills}>
-                      {(candidate.skills || []).slice(0, 3).map((skill, idx) => (
-                        <span key={idx} style={styles.skillTag}>{skill}</span>
-                      ))}
-                    </div>
-                    <div style={styles.kanbanCardFooter}>
-                      <span style={styles.kanbanCardDate}>
-                        <Icons.Clock /> {candidate.appliedDate}
-                      </span>
-                      <button style={styles.kanbanCardAction}>
-                        <Icons.MoreVertical />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                <button style={styles.kanbanAddBtn} onClick={handleAddCandidate}>
-                  <Icons.Plus />
-                  Add Candidate
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* List View */}
-      {viewMode === 'list' && (
-        <div style={styles.candidatesListView}>
-          {candidates.map((candidate) => (
-            <div 
-              key={candidate.id} 
-              style={styles.candidateListItem}
-              onClick={() => onSelectCandidate(candidate)}
-              className="candidate-list-item"
-            >
-              <div style={styles.candidateListAvatar}>{candidate.avatar}</div>
-              <div style={styles.candidateListInfo}>
-                <h4 style={styles.candidateListName}>{candidate.name}</h4>
-                <p style={styles.candidateListTitle}>{candidate.title} at {candidate.company}</p>
-              </div>
-              <div style={styles.candidateListMeta}>
-                <span style={styles.candidateListLocation}>
-                  <Icons.MapPin /> {candidate.location}
+      <div style={styles.formCard}>
+        <div style={styles.formGroup}>
+          <label style={styles.formLabel}>Resume</label>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept=".pdf,.doc,.docx"
+            style={{ display: 'none' }}
+          />
+          <div
+            style={{
+              ...styles.fileUpload,
+              borderColor: isParsing ? '#00D4FF' : uploadedFile ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+              opacity: isParsing ? 0.7 : 1,
+              pointerEvents: isParsing ? 'none' : 'auto',
+            }}
+            onClick={handleFileClick}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+          >
+            {isParsing ? (
+              <>
+                <div style={{ animation: 'spin 1s linear infinite', width: 24, height: 24 }}>
+                  <Icons.Clock />
+                </div>
+                <span style={{ color: '#00D4FF' }}>Parsing resume...</span>
+                <span style={styles.fileHint}>Extracting candidate information</span>
+              </>
+            ) : uploadedFile ? (
+              <>
+                <Icons.Check />
+                <span style={{ color: '#00D68F' }}>{uploadedFile.name}</span>
+                <span style={styles.fileHint}>
+                  {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB - Parsed successfully
                 </span>
-              </div>
-              <div style={styles.candidateListSkills}>
-                {(candidate.skills || []).slice(0, 3).map((skill, idx) => (
-                  <span key={idx} style={styles.skillTagSmall}>{skill}</span>
-                ))}
-              </div>
-              <div style={styles.candidateListScore}>
-                <div style={{
-                  ...styles.scoreBar,
-                  '--score-width': `${candidate.score}%`,
-                  '--score-color': candidate.score >= 90 ? '#00E5A0' : candidate.score >= 80 ? '#00D4FF' : '#FFB800',
-                }}>
-                  <span>{candidate.score}</span>
-                </div>
-              </div>
-              <div style={{
-                ...styles.candidateListStatus,
-                background: (candidate.status || '').includes('Offer') ? '#00E5A022' : (candidate.status || '').includes('Interview') ? '#00D4FF22' : '#7B61FF22',
-                color: (candidate.status || '').includes('Offer') ? '#00E5A0' : (candidate.status || '').includes('Interview') ? '#00D4FF' : '#7B61FF',
-              }}>
-                {candidate.status}
-              </div>
-              <button style={styles.candidateListAction}>
-                <Icons.ChevronRight />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Add Candidate Modal */}
-      {showAddCandidateModal && (
-        <div style={styles.modalOverlay} onClick={closeAddCandidateModal}>
-          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <h2 style={styles.modalTitle}>Add New Candidate</h2>
-              <button style={styles.modalCloseBtn} onClick={closeAddCandidateModal}>
-                <Icons.X />
-              </button>
-            </div>
-            <div style={styles.modalBody}>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Resume</label>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept=".pdf,.doc,.docx"
-                  style={{ display: 'none' }}
-                />
-                <div
-                  style={{
-                    ...styles.fileUpload,
-                    borderColor: isParsing ? '#00D4FF' : uploadedFile ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
-                    opacity: isParsing ? 0.7 : 1,
-                    pointerEvents: isParsing ? 'none' : 'auto',
-                  }}
-                  onClick={handleFileClick}
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                >
-                  {isParsing ? (
-                    <>
-                      <div style={{ animation: 'spin 1s linear infinite', width: 24, height: 24 }}>
-                        <Icons.Clock />
-                      </div>
-                      <span style={{ color: '#00D4FF' }}>Parsing resume...</span>
-                      <span style={styles.fileHint}>Extracting candidate information</span>
-                    </>
-                  ) : uploadedFile ? (
-                    <>
-                      <Icons.Check />
-                      <span style={{ color: '#00D68F' }}>{uploadedFile.name}</span>
-                      <span style={styles.fileHint}>
-                        {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB - Parsed successfully
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <Icons.Upload />
-                      <span>Click to upload or drag and drop</span>
-                      <span style={styles.fileHint}>PDF, DOC up to 10MB - Fields will auto-populate</span>
-                    </>
-                  )}
-                </div>
-                {parseError && (
-                  <div style={{ color: '#FF6B6B', fontSize: '12px', marginTop: '8px' }}>
-                    {parseError}
-                  </div>
-                )}
-              </div>
-              <div style={styles.formRow}>
-                <div style={styles.formGroup}>
-                  <label style={styles.formLabel}>First Name *</label>
-                  <input
-                    type="text"
-                    style={{
-                      ...styles.formInput,
-                      borderColor: formData.firstName ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
-                    }}
-                    placeholder="Enter first name"
-                    value={formData.firstName}
-                    onChange={handleInputChange('firstName')}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.formLabel}>Last Name *</label>
-                  <input
-                    type="text"
-                    style={{
-                      ...styles.formInput,
-                      borderColor: formData.lastName ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
-                    }}
-                    placeholder="Enter last name"
-                    value={formData.lastName}
-                    onChange={handleInputChange('lastName')}
-                  />
-                </div>
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Email *</label>
-                <input
-                  type="email"
-                  style={{
-                    ...styles.formInput,
-                    borderColor: formData.email ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
-                  }}
-                  placeholder="candidate@email.com"
-                  value={formData.email}
-                  onChange={handleInputChange('email')}
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Phone</label>
-                <input
-                  type="tel"
-                  style={{
-                    ...styles.formInput,
-                    borderColor: formData.phone ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
-                  }}
-                  placeholder="+91 98765 43210"
-                  value={formData.phone}
-                  onChange={handleInputChange('phone')}
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Current Title</label>
-                <input
-                  type="text"
-                  style={{
-                    ...styles.formInput,
-                    borderColor: formData.currentTitle ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
-                  }}
-                  placeholder="e.g. Senior Software Engineer"
-                  value={formData.currentTitle}
-                  onChange={handleInputChange('currentTitle')}
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Current Company</label>
-                <input
-                  type="text"
-                  style={{
-                    ...styles.formInput,
-                    borderColor: formData.currentCompany ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
-                  }}
-                  placeholder="e.g. Infosys"
-                  value={formData.currentCompany}
-                  onChange={handleInputChange('currentCompany')}
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Location</label>
-                <input
-                  type="text"
-                  style={{
-                    ...styles.formInput,
-                    borderColor: formData.location ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
-                  }}
-                  placeholder="e.g. Bangalore, Mumbai"
-                  value={formData.location}
-                  onChange={handleInputChange('location')}
-                />
-              </div>
-            </div>
-            {saveError && (
-              <div style={{color: '#ef4444', fontSize: '0.875rem', padding: '0 1.5rem', marginBottom: '-0.5rem'}}>
-                {saveError}
-              </div>
+              </>
+            ) : (
+              <>
+                <Icons.Upload />
+                <span>Click to upload or drag and drop</span>
+                <span style={styles.fileHint}>PDF, DOC up to 10MB - Fields will auto-populate</span>
+              </>
             )}
-            <div style={styles.modalFooter}>
-              <button style={styles.secondaryBtn} onClick={closeAddCandidateModal}>Cancel</button>
-              <button 
-                style={{...styles.primaryBtn, opacity: isSaving ? 0.7 : 1}} 
-                onClick={handleSaveCandidate}
-                disabled={isSaving}
-              >
-                {isSaving ? 'Saving...' : 'Add Candidate'}
-              </button>
+          </div>
+          {parseError && (
+            <div style={{ color: '#FF6B6B', fontSize: '12px', marginTop: '8px' }}>
+              {parseError}
             </div>
+          )}
+        </div>
+
+        <div style={styles.formRow}>
+          <div style={styles.formGroup}>
+            <label style={styles.formLabel}>First Name *</label>
+            <input
+              type="text"
+              style={{
+                ...styles.formInput,
+                borderColor: formData.firstName ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+              }}
+              placeholder="Enter first name"
+              value={formData.firstName}
+              onChange={handleInputChange('firstName')}
+            />
+          </div>
+          <div style={styles.formGroup}>
+            <label style={styles.formLabel}>Last Name *</label>
+            <input
+              type="text"
+              style={{
+                ...styles.formInput,
+                borderColor: formData.lastName ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+              }}
+              placeholder="Enter last name"
+              value={formData.lastName}
+              onChange={handleInputChange('lastName')}
+            />
           </div>
         </div>
-      )}
+
+        <div style={styles.formGroup}>
+          <label style={styles.formLabel}>Email *</label>
+          <input
+            type="email"
+            style={{
+              ...styles.formInput,
+              borderColor: formData.email ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+            }}
+            placeholder="candidate@email.com"
+            value={formData.email}
+            onChange={handleInputChange('email')}
+          />
+        </div>
+
+        <div style={styles.formGroup}>
+          <label style={styles.formLabel}>Phone</label>
+          <input
+            type="tel"
+            style={{
+              ...styles.formInput,
+              borderColor: formData.phone ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+            }}
+            placeholder="+91 98765 43210"
+            value={formData.phone}
+            onChange={handleInputChange('phone')}
+          />
+        </div>
+
+        <div style={styles.formGroup}>
+          <label style={styles.formLabel}>Current Title</label>
+          <input
+            type="text"
+            style={{
+              ...styles.formInput,
+              borderColor: formData.currentTitle ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+            }}
+            placeholder="e.g. Senior Software Engineer"
+            value={formData.currentTitle}
+            onChange={handleInputChange('currentTitle')}
+          />
+        </div>
+
+        <div style={styles.formGroup}>
+          <label style={styles.formLabel}>Current Company</label>
+          <input
+            type="text"
+            style={{
+              ...styles.formInput,
+              borderColor: formData.currentCompany ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+            }}
+            placeholder="e.g. Infosys"
+            value={formData.currentCompany}
+            onChange={handleInputChange('currentCompany')}
+          />
+        </div>
+
+        <div style={styles.formGroup}>
+          <label style={styles.formLabel}>Location</label>
+          <input
+            type="text"
+            style={{
+              ...styles.formInput,
+              borderColor: formData.location ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+            }}
+            placeholder="e.g. Bangalore, Mumbai"
+            value={formData.location}
+            onChange={handleInputChange('location')}
+          />
+        </div>
+
+        {saveError && (
+          <div style={{color: '#ef4444', fontSize: '0.875rem', marginTop: '1rem'}}>
+            {saveError}
+          </div>
+        )}
+
+        <div style={styles.formActions}>
+          <button style={styles.secondaryBtn} onClick={onBack}>Cancel</button>
+          <button 
+            style={{...styles.primaryBtn, opacity: isSaving ? 0.7 : 1}} 
+            onClick={handleSaveCandidate}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving...' : 'Add Candidate'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
 // ============================================================================
-// CANDIDATE DETAIL PANEL
+// CANDIDATE DETAIL PAGE
+// ============================================================================
+function CandidateDetailPage({ candidate, onBack }) {
+  const [activeTab, setActiveTab] = useState('overview');
+
+  if (!candidate) {
+    return (
+      <div style={styles.pageContainer}>
+        <Breadcrumbs items={[{ label: 'Candidates', onClick: onBack }, { label: 'Not Found' }]} />
+        <div style={{ textAlign: 'center', padding: '4rem' }}>
+          <h2 style={{ color: '#fff', marginBottom: '1rem' }}>Candidate not found</h2>
+          <button style={styles.primaryBtn} onClick={onBack}>Back to Candidates</button>
+        </div>
+      </div>
+    );
+  }
+
+  const breadcrumbItems = [
+    { label: 'Candidates', onClick: onBack },
+    { label: candidate.name }
+  ];
+
+  return (
+    <div style={styles.pageContainer}>
+      <Breadcrumbs items={breadcrumbItems} />
+
+      <div style={styles.candidateDetailHeader}>
+        <div style={styles.candidateDetailInfo}>
+          <div style={styles.profileAvatarLarge}>{candidate.avatar || '👤'}</div>
+          <div>
+            <h1 style={styles.pageTitle}>{candidate.name}</h1>
+            <p style={styles.pageSubtitle}>{candidate.title} at {candidate.company}</p>
+            <div style={styles.candidateDetailMeta}>
+              <span><Icons.MapPin /> {candidate.location}</span>
+              <span><Icons.Briefcase /> {candidate.experience || 'N/A'}</span>
+              <span><Icons.Clock /> Applied {candidate.appliedDate}</span>
+            </div>
+          </div>
+        </div>
+        <div style={styles.candidateDetailActions}>
+          <button style={styles.secondaryBtn}>
+            <Icons.Mail />
+            Email
+          </button>
+          <button style={styles.primaryBtn}>
+            <Icons.Calendar />
+            Schedule Interview
+          </button>
+        </div>
+      </div>
+
+      <div style={styles.candidateDetailScore}>
+        <div style={styles.scoreCircle}>
+          <svg width="100" height="100" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#1A2942" strokeWidth="8" />
+            <circle
+              cx="50" cy="50" r="45"
+              fill="none"
+              stroke={candidate.score >= 90 ? '#00E5A0' : candidate.score >= 80 ? '#00D4FF' : '#FFB800'}
+              strokeWidth="8"
+              strokeDasharray={`${(candidate.score / 100) * 283} 283`}
+              strokeLinecap="round"
+              transform="rotate(-90 50 50)"
+            />
+          </svg>
+          <span style={styles.scoreValue}>{candidate.score}</span>
+        </div>
+        <span style={styles.scoreLabel}>Match Score</span>
+      </div>
+
+      <div style={styles.profileTabs}>
+        {['Overview', 'Resume', 'Timeline', 'Notes'].map((tab) => (
+          <button
+            key={tab}
+            style={{
+              ...styles.profileTab,
+              ...(activeTab === tab.toLowerCase() ? styles.profileTabActive : {})
+            }}
+            onClick={() => setActiveTab(tab.toLowerCase())}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      <div style={styles.profileContent}>
+        {activeTab === 'overview' && (
+          <>
+            <div style={styles.profileSection}>
+              <h4 style={styles.sectionTitle}>Skills</h4>
+              <div style={styles.skillsGrid}>
+                {(candidate.skills || []).map((skill, idx) => (
+                  <span key={idx} style={styles.skillTagLarge}>{skill}</span>
+                ))}
+                {(!candidate.skills || candidate.skills.length === 0) && (
+                  <span style={{ color: '#8F9BB3' }}>No skills listed</span>
+                )}
+              </div>
+            </div>
+
+            <div style={styles.profileSection}>
+              <h4 style={styles.sectionTitle}>AI Analysis</h4>
+              <div style={styles.aiAnalysis}>
+                <div style={styles.aiAnalysisHeader}>
+                  <Icons.Sparkles />
+                  <span>TalentForge AI</span>
+                </div>
+                <p style={styles.aiAnalysisText}>
+                  Strong candidate with excellent technical skills and relevant experience. 
+                  Exceeds requirements in most areas. Recommended for technical interview.
+                </p>
+              </div>
+            </div>
+
+            <div style={styles.profileSection}>
+              <h4 style={styles.sectionTitle}>Contact</h4>
+              <div style={styles.contactList}>
+                <div style={styles.contactItem}>
+                  <Icons.Mail />
+                  <span>{candidate.name?.toLowerCase().replace(' ', '.')}@email.com</span>
+                </div>
+                <div style={styles.contactItem}>
+                  <Icons.Phone />
+                  <span>+91 98765 43210</span>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'resume' && (
+          <div style={styles.profileSection}>
+            <p style={{ color: '#8F9BB3' }}>Resume content will be displayed here.</p>
+          </div>
+        )}
+
+        {activeTab === 'timeline' && (
+          <div style={styles.profileSection}>
+            <p style={{ color: '#8F9BB3' }}>Application timeline will be displayed here.</p>
+          </div>
+        )}
+
+        {activeTab === 'notes' && (
+          <div style={styles.profileSection}>
+            <p style={{ color: '#8F9BB3' }}>Notes and comments will be displayed here.</p>
+          </div>
+        )}
+      </div>
+
+      <div style={styles.candidateDetailFooter}>
+        <button style={styles.rejectBtn}>Reject</button>
+        <button style={styles.advanceBtn}>Advance to Next Stage</button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// CANDIDATE DETAIL PANEL (kept for reference, unused)
 // ============================================================================
 function CandidateDetailPanel({ candidate, onClose }) {
   const [activeTab, setActiveTab] = useState('overview');
@@ -1883,6 +2045,106 @@ const styles = {
     display: 'flex',
     minHeight: '100vh',
     background: '#0A1628',
+  },
+
+  // Breadcrumbs
+  breadcrumbs: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '24px',
+    fontSize: '14px',
+  },
+
+  breadcrumbLink: {
+    background: 'none',
+    border: 'none',
+    color: '#00D4FF',
+    cursor: 'pointer',
+    fontSize: '14px',
+    padding: 0,
+  },
+
+  breadcrumbSeparator: {
+    color: '#8F9BB3',
+  },
+
+  breadcrumbCurrent: {
+    color: '#fff',
+  },
+
+  // Form Card
+  formCard: {
+    background: '#0D1B2A',
+    borderRadius: '16px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    padding: '32px',
+    maxWidth: '600px',
+  },
+
+  formActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '12px',
+    marginTop: '24px',
+    paddingTop: '24px',
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+  },
+
+  // Candidate Detail Page
+  candidateDetailHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: '32px',
+    flexWrap: 'wrap',
+    gap: '24px',
+  },
+
+  candidateDetailInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '20px',
+  },
+
+  profileAvatarLarge: {
+    width: '80px',
+    height: '80px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #00D4FF22 0%, #7B61FF22 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '32px',
+  },
+
+  candidateDetailMeta: {
+    display: 'flex',
+    gap: '20px',
+    marginTop: '8px',
+    color: '#8F9BB3',
+    fontSize: '14px',
+  },
+
+  candidateDetailActions: {
+    display: 'flex',
+    gap: '12px',
+  },
+
+  candidateDetailScore: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginBottom: '32px',
+  },
+
+  candidateDetailFooter: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '12px',
+    marginTop: '32px',
+    paddingTop: '24px',
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
   },
 
   // Sidebar
