@@ -1749,6 +1749,26 @@ function CandidateDetailPage({ candidate, onBack }) {
     return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   };
 
+  const calculateProfileStrength = () => {
+    let score = 0;
+    if (c.email) score += 10;
+    if (c.phone) score += 10;
+    if (c.profile_summary) score += 15;
+    if (c.linkedin_url) score += 5;
+    if (c.resume_url) score += 5;
+    if (c.current_title) score += 5;
+    if (c.current_company) score += 5;
+    const skillCount = (c.skills || []).length;
+    score += Math.min(skillCount * 3, 20);
+    const expCount = (c.experience || []).length;
+    score += Math.min(expCount * 5, 15);
+    const eduCount = (c.education || []).length;
+    score += Math.min(eduCount * 5, 10);
+    return Math.min(score, 100);
+  };
+
+  const profileStrength = calculateProfileStrength();
+
   return (
     <div style={styles.pageContainer}>
       <Breadcrumbs items={breadcrumbItems} />
@@ -1795,23 +1815,43 @@ function CandidateDetailPage({ candidate, onBack }) {
         </div>
       )}
 
-      <div style={styles.candidateDetailScore}>
-        <div style={styles.scoreCircle}>
-          <svg width="100" height="100" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="45" fill="none" stroke="#1A2942" strokeWidth="8" />
-            <circle
-              cx="50" cy="50" r="45"
-              fill="none"
-              stroke={candidate.score >= 90 ? '#00E5A0' : candidate.score >= 80 ? '#00D4FF' : '#FFB800'}
-              strokeWidth="8"
-              strokeDasharray={`${((candidate.score || 0) / 100) * 283} 283`}
-              strokeLinecap="round"
-              transform="rotate(-90 50 50)"
-            />
-          </svg>
-          <span style={styles.scoreValue}>{candidate.score || 0}</span>
+      <div style={{ display: 'flex', gap: '2rem', justifyContent: 'center', margin: '1.5rem 0' }}>
+        <div style={styles.candidateDetailScore}>
+          <div style={styles.scoreCircle}>
+            <svg width="100" height="100" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="45" fill="none" stroke="#1A2942" strokeWidth="8" />
+              <circle
+                cx="50" cy="50" r="45"
+                fill="none"
+                stroke={profileStrength >= 80 ? '#00E5A0' : profileStrength >= 60 ? '#00D4FF' : profileStrength >= 40 ? '#FFB800' : '#FF6B6B'}
+                strokeWidth="8"
+                strokeDasharray={`${(profileStrength / 100) * 283} 283`}
+                strokeLinecap="round"
+                transform="rotate(-90 50 50)"
+              />
+            </svg>
+            <span style={styles.scoreValue}>{profileStrength}</span>
+          </div>
+          <span style={styles.scoreLabel}>Profile Strength</span>
         </div>
-        <span style={styles.scoreLabel}>Match Score</span>
+        <div style={styles.candidateDetailScore}>
+          <div style={styles.scoreCircle}>
+            <svg width="100" height="100" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="45" fill="none" stroke="#1A2942" strokeWidth="8" />
+              <circle
+                cx="50" cy="50" r="45"
+                fill="none"
+                stroke={candidate.score >= 90 ? '#00E5A0' : candidate.score >= 80 ? '#00D4FF' : '#FFB800'}
+                strokeWidth="8"
+                strokeDasharray={`${((candidate.score || 0) / 100) * 283} 283`}
+                strokeLinecap="round"
+                transform="rotate(-90 50 50)"
+              />
+            </svg>
+            <span style={styles.scoreValue}>{candidate.score || 0}</span>
+          </div>
+          <span style={styles.scoreLabel}>Match Score</span>
+        </div>
       </div>
 
       <div style={styles.profileTabs}>
