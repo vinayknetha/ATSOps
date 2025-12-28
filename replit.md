@@ -7,6 +7,8 @@ TalentForge is an AI-powered Applicant Tracking System (ATS) built with React an
 
 ### Tech Stack
 - **Frontend Framework**: React 18 with Vite 5
+- **Backend API**: Express.js on port 3001
+- **Database**: PostgreSQL (via pg driver)
 - **Styling**: Tailwind CSS with custom styles
 - **State Management**: Zustand
 - **Routing**: React Router DOM v6
@@ -31,6 +33,9 @@ src/
 ├── App.jsx          # Main app component
 └── index.jsx        # Entry point
 
+server/
+└── index.js         # Express API server with PostgreSQL connection
+
 api/                 # API specification docs
 database/            # Database schema and migrations
 docs/                # Documentation
@@ -49,6 +54,12 @@ docs/                # Documentation
 - `npm run format` - Format code with Prettier
 
 ## Recent Changes
+- December 28, 2025: Database integration for Dashboard
+  - Created Express.js backend API (server/index.js) on port 3001
+  - Added API endpoints: /api/dashboard/stats, candidates, jobs, interviews, pipeline, activity
+  - Updated Dashboard.jsx to fetch real data from PostgreSQL database
+  - Configured Vite proxy to route /api requests to backend
+  - Updated npm scripts to run frontend and backend concurrently
 - December 28, 2025: Initial Replit setup
   - Configured Vite for port 5000 with allowedHosts
   - Fixed syntax error in Dashboard.jsx (line 2608)
