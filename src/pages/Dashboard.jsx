@@ -1230,6 +1230,14 @@ function AddCandidatePage({ onBack, onSave }) {
     currentTitle: '',
     currentCompany: '',
     location: '',
+    linkedinUrl: '',
+    portfolioUrl: '',
+    summary: '',
+    skills: [],
+    education: [],
+    experience: [],
+    projects: [],
+    certifications: [],
   });
   const fileInputRef = React.useRef(null);
 
@@ -1264,6 +1272,20 @@ function AddCandidatePage({ onBack, onSave }) {
           currentTitle: result.data.currentTitle || '',
           currentCompany: result.data.currentCompany || '',
           location: result.data.location || '',
+          linkedinUrl: result.data.linkedinUrl || '',
+          portfolioUrl: result.data.portfolioUrl || '',
+          summary: result.data.summary || '',
+          skills: result.data.skills || [],
+          education: result.data.education || [],
+          experience: result.data.experience || [],
+          projects: result.data.projects || [],
+          certifications: result.data.certifications || [],
+        });
+        console.log('Resume parsed with:', {
+          skills: result.data.skills?.length || 0,
+          education: result.data.education?.length || 0,
+          experience: result.data.experience?.length || 0,
+          projects: result.data.projects?.length || 0
         });
       }
     } catch (err) {

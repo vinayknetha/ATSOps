@@ -467,19 +467,68 @@ app.post('/api/resume/parse', upload.single('resume'), async (req, res) => {
       return res.status(400).json({ error: 'Could not extract text from resume. Please try a different file.' });
     }
     
-    const prompt = `Extract candidate information from the following resume text. Return a JSON object with these fields:
-- firstName (string): The candidate's first name
-- lastName (string): The candidate's last name  
+    const prompt = `Extract ALL information from the following resume text. Return a JSON object with these fields:
+
+PERSONAL INFO:
+- firstName (string): First name
+- lastName (string): Last name
 - email (string): Email address
 - phone (string): Phone number
-- currentTitle (string): Current or most recent job title
-- currentCompany (string): Current or most recent company name
-- location (string): City or location mentioned (prefer Indian cities if mentioned)
+- currentTitle (string): Current/most recent job title
+- currentCompany (string): Current/most recent company
+- location (string): City/location (prefer Indian cities)
+- linkedinUrl (string): LinkedIn URL if present
+- portfolioUrl (string): Portfolio/website URL if present
+- summary (string): Professional summary/objective if present
 
-If a field cannot be found, use an empty string.
+SKILLS (array of objects):
+- skills: [{ name: string, proficiencyLevel: "beginner"|"intermediate"|"advanced"|"expert", yearsOfExperience: number|null }]
+  Extract ALL technical skills, programming languages, frameworks, tools, soft skills mentioned
+
+EDUCATION (array of objects):
+- education: [{ 
+    institutionName: string,
+    degreeName: string (e.g., "Bachelor of Technology", "Master of Science"),
+    fieldOfStudy: string (e.g., "Computer Science", "Electronics"),
+    startDate: string (YYYY-MM format or year),
+    endDate: string (YYYY-MM format or year, "Present" if current),
+    gpa: number|null,
+    percentage: number|null,
+    honors: string|null,
+    description: string|null
+  }]
+
+EXPERIENCE (array of objects):
+- experience: [{
+    companyName: string,
+    title: string,
+    location: string|null,
+    startDate: string (YYYY-MM format or year),
+    endDate: string (YYYY-MM format or year, "Present" if current),
+    isCurrent: boolean,
+    description: string (full job description),
+    responsibilities: string[] (list of responsibilities),
+    achievements: string[] (list of achievements/accomplishments)
+  }]
+
+PROJECTS (array of objects):
+- projects: [{
+    name: string,
+    description: string,
+    role: string|null,
+    technologies: string[] (technologies used),
+    url: string|null,
+    startDate: string|null,
+    endDate: string|null
+  }]
+
+CERTIFICATIONS (array of objects):
+- certifications: [{ name: string, issuer: string, date: string|null, url: string|null }]
+
+Extract EVERYTHING mentioned in the resume. Do not skip any detail.
 
 Resume text:
-${text.substring(0, 8000)}
+${text.substring(0, 15000)}
 
 Return ONLY valid JSON, no explanation.`;
 
@@ -487,7 +536,7 @@ Return ONLY valid JSON, no explanation.`;
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.1,
-      max_tokens: 500,
+      max_tokens: 4000,
     });
     
     const content = response.choices[0]?.message?.content || '{}';
@@ -496,8 +545,11 @@ Return ONLY valid JSON, no explanation.`;
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       parsed = JSON.parse(jsonMatch ? jsonMatch[0] : content);
     } catch (e) {
+      console.error('JSON parse error:', e);
       parsed = {};
     }
+    
+    console.log('Parsed resume data:', JSON.stringify(parsed, null, 2));
     
     res.json({
       success: true,
@@ -509,6 +561,14 @@ Return ONLY valid JSON, no explanation.`;
         currentTitle: parsed.currentTitle || '',
         currentCompany: parsed.currentCompany || '',
         location: parsed.location || '',
+        linkedinUrl: parsed.linkedinUrl || '',
+        portfolioUrl: parsed.portfolioUrl || '',
+        summary: parsed.summary || '',
+        skills: parsed.skills || [],
+        education: parsed.education || [],
+        experience: parsed.experience || [],
+        projects: parsed.projects || [],
+        certifications: parsed.certifications || [],
       }
     });
   } catch (err) {
@@ -522,42 +582,201 @@ Return ONLY valid JSON, no explanation.`;
 });
 
 app.post('/api/candidates', async (req, res) => {
+  const client = await pool.connect();
   try {
-    const { firstName, lastName, email, phone, currentTitle, currentCompany, location } = req.body;
+    const { 
+      firstName, lastName, email, phone, currentTitle, currentCompany, location,
+      linkedinUrl, portfolioUrl, summary, skills, education, experience, projects, certifications 
+    } = req.body;
     
     if (!firstName || !lastName || !email) {
       return res.status(400).json({ error: 'First name, last name, and email are required' });
     }
     
+    await client.query('BEGIN');
+    
     const orgId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
     
-    const cityResult = await pool.query(
+    const cityResult = await client.query(
       `SELECT id FROM cities WHERE LOWER(name) LIKE LOWER($1) LIMIT 1`,
       [`%${location || 'Bangalore'}%`]
     );
     const cityId = cityResult.rows[0]?.id || null;
     
-    const result = await pool.query(
+    const candidateResult = await client.query(
       `INSERT INTO candidates (
         organization_id, first_name, last_name, email, phone,
-        current_title, current_company, city_id, status, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', NOW(), NOW())
+        current_title, current_company, city_id, linkedin_url, portfolio_url,
+        summary, status, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', NOW(), NOW())
       RETURNING id, first_name, last_name, email`,
-      [orgId, firstName, lastName, email, phone || null, currentTitle || null, currentCompany || null, cityId]
+      [orgId, firstName, lastName, email, phone || null, currentTitle || null, 
+       currentCompany || null, cityId, linkedinUrl || null, portfolioUrl || null, summary || null]
     );
+    
+    const candidateId = candidateResult.rows[0].id;
+    
+    if (skills && skills.length > 0) {
+      for (const rawSkill of skills) {
+        const skill = typeof rawSkill === 'string' 
+          ? { name: rawSkill, proficiencyLevel: 'intermediate', yearsOfExperience: null }
+          : rawSkill;
+        
+        if (!skill || !skill.name || typeof skill.name !== 'string' || skill.name.trim() === '') {
+          continue;
+        }
+        
+        const skillName = skill.name.trim();
+        
+        try {
+          let skillId;
+          const existingSkill = await client.query(
+            `SELECT id FROM skills WHERE LOWER(canonical_name) = LOWER($1) LIMIT 1`,
+            [skillName]
+          );
+          
+          if (existingSkill.rows.length > 0) {
+            skillId = existingSkill.rows[0].id;
+          } else {
+            const newSkill = await client.query(
+              `INSERT INTO skills (canonical_name, display_name, is_active, created_at, updated_at)
+               VALUES ($1, $2, true, NOW(), NOW()) RETURNING id`,
+              [skillName.toLowerCase(), skillName]
+            );
+            skillId = newSkill.rows[0].id;
+          }
+          
+          await client.query(
+            `INSERT INTO candidate_skills (id, candidate_id, skill_id, proficiency_level, years_of_experience, source, is_visible, created_at, updated_at)
+             VALUES (gen_random_uuid(), $1, $2, $3, $4, 'resume', true, NOW(), NOW())
+             ON CONFLICT DO NOTHING`,
+            [candidateId, skillId, skill.proficiencyLevel || 'intermediate', skill.yearsOfExperience || null]
+          );
+        } catch (skillErr) {
+          console.error(`Error saving skill "${skillName}":`, skillErr.message);
+        }
+      }
+    }
+    
+    if (education && education.length > 0) {
+      for (let i = 0; i < education.length; i++) {
+        const edu = education[i];
+        if (!edu || typeof edu !== 'object' || !edu.institutionName) {
+          continue;
+        }
+        
+        try {
+          const startDate = parseDate(edu.startDate);
+          const endDate = edu.endDate === 'Present' ? null : parseDate(edu.endDate);
+          
+          await client.query(
+            `INSERT INTO candidate_education (
+              id, candidate_id, institution_name, degree_name, field_of_study_text,
+              start_date, end_date, is_current, gpa, percentage, honors, description,
+              sort_order, is_visible, created_at, updated_at
+            ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true, NOW(), NOW())`,
+            [candidateId, edu.institutionName, edu.degreeName || null, edu.fieldOfStudy || null,
+             startDate, endDate, endDate === null, edu.gpa || null, edu.percentage || null,
+             edu.honors || null, edu.description || null, i]
+          );
+        } catch (eduErr) {
+          console.error(`Error saving education "${edu.institutionName}":`, eduErr.message);
+        }
+      }
+    }
+    
+    if (experience && experience.length > 0) {
+      for (let i = 0; i < experience.length; i++) {
+        const exp = experience[i];
+        if (!exp || typeof exp !== 'object' || !exp.companyName || !exp.title) {
+          continue;
+        }
+        
+        try {
+          const startDate = parseDate(exp.startDate);
+          const endDate = exp.endDate === 'Present' ? null : parseDate(exp.endDate);
+          
+          await client.query(
+            `INSERT INTO candidate_experience (
+              id, candidate_id, company_name, title, location_text,
+              start_date, end_date, is_current, description, responsibilities, achievements,
+              sort_order, is_visible, created_at, updated_at
+            ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true, NOW(), NOW())`,
+            [candidateId, exp.companyName, exp.title, exp.location || null,
+             startDate, endDate, exp.isCurrent || endDate === null,
+             exp.description || null,
+             Array.isArray(exp.responsibilities) ? exp.responsibilities.join('\n') : null,
+             Array.isArray(exp.achievements) ? exp.achievements.join('\n') : null, i]
+          );
+        } catch (expErr) {
+          console.error(`Error saving experience "${exp.companyName}":`, expErr.message);
+        }
+      }
+    }
+    
+    if (projects && projects.length > 0) {
+      for (let i = 0; i < projects.length; i++) {
+        const proj = projects[i];
+        if (!proj || typeof proj !== 'object' || !proj.name) {
+          continue;
+        }
+        
+        try {
+          await client.query(
+            `INSERT INTO candidate_projects (
+              id, candidate_id, name, description, role, url, technologies,
+              start_date, end_date, sort_order, is_visible, created_at, updated_at
+            ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, true, NOW(), NOW())`,
+            [candidateId, proj.name, proj.description || null, proj.role || null,
+             proj.url || null, Array.isArray(proj.technologies) ? proj.technologies : [], 
+             parseDate(proj.startDate), parseDate(proj.endDate), i]
+          );
+        } catch (projErr) {
+          console.error(`Error saving project "${proj.name}":`, projErr.message);
+        }
+      }
+    }
+    
+    await client.query('COMMIT');
+    
+    console.log(`Created candidate ${candidateId} with ${skills?.length || 0} skills, ${education?.length || 0} education, ${experience?.length || 0} experience, ${projects?.length || 0} projects`);
     
     res.status(201).json({
       success: true,
-      candidate: result.rows[0]
+      candidate: candidateResult.rows[0],
+      savedData: {
+        skills: skills?.length || 0,
+        education: education?.length || 0,
+        experience: experience?.length || 0,
+        projects: projects?.length || 0
+      }
     });
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error('Error creating candidate:', err);
     if (err.code === '23505') {
       return res.status(400).json({ error: 'A candidate with this email already exists' });
     }
     res.status(500).json({ error: 'Failed to create candidate' });
+  } finally {
+    client.release();
   }
 });
+
+function parseDate(dateStr) {
+  if (!dateStr || dateStr === 'Present') return null;
+  if (/^\d{4}$/.test(dateStr)) {
+    return `${dateStr}-01-01`;
+  }
+  if (/^\d{4}-\d{2}$/.test(dateStr)) {
+    return `${dateStr}-01`;
+  }
+  const parsed = new Date(dateStr);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().split('T')[0];
+  }
+  return null;
+}
 
 const PORT = 3001;
 app.listen(PORT, '0.0.0.0', () => {
