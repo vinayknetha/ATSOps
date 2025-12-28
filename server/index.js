@@ -380,9 +380,8 @@ app.post('/api/resume/parse', upload.single('resume'), async (req, res) => {
     
     if (req.file.mimetype === 'application/pdf') {
       const dataBuffer = fs.readFileSync(filePath);
-      const pdfParseModule = await import('pdf-parse');
-      const pdfParseFn = pdfParseModule.default || pdfParseModule;
-      const pdfData = await pdfParseFn(dataBuffer);
+      const { PDFParse } = require('pdf-parse');
+      const pdfData = await PDFParse(dataBuffer);
       text = pdfData.text;
     } else {
       const result = await mammoth.extractRawText({ path: filePath });
