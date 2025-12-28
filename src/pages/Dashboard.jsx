@@ -1972,6 +1972,31 @@ function CandidateDetailPage({ candidate, onBack }) {
 
         {activeTab === 'overview' && !loading && !isEditing && (
           <>
+            <div style={styles.profileSection}>
+              <h4 style={styles.sectionTitle}>Contact</h4>
+              <div style={styles.contactList}>
+                <div style={styles.contactItem}>
+                  <Icons.Mail />
+                  <span>{c.email}</span>
+                </div>
+                {c.phone && (
+                  <div style={styles.contactItem}>
+                    <Icons.Phone />
+                    <span>{c.phone}</span>
+                  </div>
+                )}
+                {c.linkedin_url && (
+                  <div style={styles.contactItem}>
+                    <Icons.Link />
+                    <a href={c.linkedin_url} target="_blank" rel="noopener noreferrer" style={{ color: '#00D4FF' }}>
+                      LinkedIn
+                    </a>
+                    <span style={{ color: '#8F9BB3', fontSize: '0.875rem', marginLeft: '0.5rem' }}>({c.linkedin_url})</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {c.profile_summary && (
               <div style={styles.profileSection}>
                 <h4 style={styles.sectionTitle}>Summary</h4>
@@ -2052,28 +2077,6 @@ function CandidateDetailPage({ candidate, onBack }) {
                 ))}
               </div>
             )}
-
-            <div style={styles.profileSection}>
-              <h4 style={styles.sectionTitle}>Contact</h4>
-              <div style={styles.contactList}>
-                <div style={styles.contactItem}>
-                  <Icons.Mail />
-                  <span>{c.email}</span>
-                </div>
-                {c.phone && (
-                  <div style={styles.contactItem}>
-                    <Icons.Phone />
-                    <span>{c.phone}</span>
-                  </div>
-                )}
-                {c.linkedin_url && (
-                  <div style={styles.contactItem}>
-                    <Icons.Link />
-                    <a href={c.linkedin_url} target="_blank" rel="noopener noreferrer" style={{ color: '#00D4FF' }}>LinkedIn</a>
-                  </div>
-                )}
-              </div>
-            </div>
           </>
         )}
 
