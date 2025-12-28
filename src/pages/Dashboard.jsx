@@ -331,38 +331,52 @@ const Icons = {
 };
 
 // ============================================================================
-// MOCK DATA
+// API BASE URL
 // ============================================================================
+const API_BASE = '/api';
+
+// Default data (used as fallback while loading)
+const defaultCandidates = [];
+const defaultJobs = [];
+const defaultInterviews = [];
+const defaultPipeline = [
+  { id: 'applied', name: 'New', count: 0, color: '#00D4FF' },
+  { id: 'screening', name: 'Screening', count: 0, color: '#7B61FF' },
+  { id: 'interview', name: 'Interview', count: 0, color: '#FFB800' },
+  { id: 'offer', name: 'Offer', count: 0, color: '#00E5A0' },
+  { id: 'hired', name: 'Hired', count: 0, color: '#FF6B35' },
+];
+const defaultStats = {
+  total_candidates: '0',
+  active_jobs: '0',
+  interviews_today: '0',
+  offers_sent: '0'
+};
+const defaultActivity = [];
+
+// Mock data for other views (until they're converted to API)
 const mockCandidates = [
-  { id: 1, name: 'Sarah Chen', title: 'Senior Software Engineer', company: 'Google', location: 'San Francisco, CA', score: 94, skills: ['React', 'TypeScript', 'Node.js', 'AWS'], avatar: '👩‍💻', status: 'Interview', appliedDate: '2 days ago', experience: '8 years' },
-  { id: 2, name: 'Marcus Johnson', title: 'Product Manager', company: 'Meta', location: 'New York, NY', score: 89, skills: ['Product Strategy', 'Agile', 'Analytics'], avatar: '👨‍💼', status: 'Phone Screen', appliedDate: '3 days ago', experience: '6 years' },
-  { id: 3, name: 'Emily Rodriguez', title: 'UX Designer', company: 'Airbnb', location: 'Los Angeles, CA', score: 91, skills: ['Figma', 'User Research', 'Prototyping'], avatar: '👩‍🎨', status: 'New', appliedDate: '1 day ago', experience: '5 years' },
-  { id: 4, name: 'David Kim', title: 'Data Scientist', company: 'Netflix', location: 'Seattle, WA', score: 87, skills: ['Python', 'ML', 'TensorFlow', 'SQL'], avatar: '👨‍🔬', status: 'Offer', appliedDate: '5 days ago', experience: '7 years' },
-  { id: 5, name: 'Alexandra Patel', title: 'DevOps Engineer', company: 'Amazon', location: 'Austin, TX', score: 92, skills: ['Kubernetes', 'Docker', 'Terraform', 'CI/CD'], avatar: '👩‍🔧', status: 'Technical Interview', appliedDate: '4 days ago', experience: '6 years' },
-  { id: 6, name: 'James Wilson', title: 'Frontend Developer', company: 'Stripe', location: 'Remote', score: 85, skills: ['Vue.js', 'JavaScript', 'CSS', 'GraphQL'], avatar: '👨‍💻', status: 'Review', appliedDate: '1 day ago', experience: '4 years' },
+  { id: 1, name: 'Priya Sharma', title: 'Senior Software Engineer', company: 'Infosys', location: 'Bangalore', score: 94, skills: ['React', 'TypeScript', 'Node.js', 'AWS'], avatar: '👩‍💻', status: 'Interview', appliedDate: '2 days ago', experience: '8 years' },
+  { id: 2, name: 'Rahul Verma', title: 'Product Manager', company: 'Flipkart', location: 'Mumbai', score: 89, skills: ['Product Strategy', 'Agile', 'Analytics'], avatar: '👨‍💼', status: 'Phone Screen', appliedDate: '3 days ago', experience: '6 years' },
+  { id: 3, name: 'Anita Patel', title: 'UX Designer', company: 'Zoho', location: 'Chennai', score: 91, skills: ['Figma', 'User Research', 'Prototyping'], avatar: '👩‍🎨', status: 'New', appliedDate: '1 day ago', experience: '5 years' },
+  { id: 4, name: 'Vikram Singh', title: 'Data Scientist', company: 'TCS', location: 'Hyderabad', score: 87, skills: ['Python', 'ML', 'TensorFlow', 'SQL'], avatar: '👨‍🔬', status: 'Offer', appliedDate: '5 days ago', experience: '7 years' },
+  { id: 5, name: 'Kavitha Reddy', title: 'DevOps Engineer', company: 'Wipro', location: 'Pune', score: 92, skills: ['Kubernetes', 'Docker', 'Terraform', 'CI/CD'], avatar: '👩‍🔧', status: 'Technical Interview', appliedDate: '4 days ago', experience: '6 years' },
+  { id: 6, name: 'Arjun Kumar', title: 'Frontend Developer', company: 'Paytm', location: 'Delhi', score: 85, skills: ['Vue.js', 'JavaScript', 'CSS', 'GraphQL'], avatar: '👨‍💻', status: 'Review', appliedDate: '1 day ago', experience: '4 years' },
 ];
 
 const mockJobs = [
-  { id: 1, title: 'Senior Software Engineer', department: 'Engineering', location: 'San Francisco, CA', type: 'Full-time', applicants: 45, newApplicants: 12, status: 'Active', posted: '5 days ago', salary: '$150K - $200K' },
-  { id: 2, title: 'Product Manager', department: 'Product', location: 'New York, NY', type: 'Full-time', applicants: 38, newApplicants: 8, status: 'Active', posted: '3 days ago', salary: '$140K - $180K' },
-  { id: 3, title: 'UX Designer', department: 'Design', location: 'Remote', type: 'Full-time', applicants: 52, newApplicants: 15, status: 'Active', posted: '7 days ago', salary: '$120K - $160K' },
-  { id: 4, title: 'Data Scientist', department: 'Data', location: 'Seattle, WA', type: 'Full-time', applicants: 29, newApplicants: 5, status: 'Active', posted: '10 days ago', salary: '$160K - $220K' },
-  { id: 5, title: 'DevOps Engineer', department: 'Engineering', location: 'Austin, TX', type: 'Full-time', applicants: 21, newApplicants: 3, status: 'Paused', posted: '14 days ago', salary: '$140K - $190K' },
+  { id: 1, title: 'Senior Software Engineer', department: 'Engineering', location: 'Bangalore', type: 'Full-time', applicants: 45, newApplicants: 12, status: 'Active', posted: '5 days ago', salary: '₹25L - ₹40L' },
+  { id: 2, title: 'Product Manager', department: 'Product', location: 'Mumbai', type: 'Full-time', applicants: 38, newApplicants: 8, status: 'Active', posted: '3 days ago', salary: '₹30L - ₹45L' },
+  { id: 3, title: 'UX Designer', department: 'Design', location: 'Remote', type: 'Full-time', applicants: 52, newApplicants: 15, status: 'Active', posted: '7 days ago', salary: '₹18L - ₹28L' },
+  { id: 4, title: 'Data Scientist', department: 'Data', location: 'Hyderabad', type: 'Full-time', applicants: 29, newApplicants: 5, status: 'Active', posted: '10 days ago', salary: '₹28L - ₹42L' },
+  { id: 5, title: 'DevOps Engineer', department: 'Engineering', location: 'Pune', type: 'Full-time', applicants: 21, newApplicants: 3, status: 'Paused', posted: '14 days ago', salary: '₹22L - ₹35L' },
 ];
 
-const mockInterviews = [
-  { id: 1, candidate: 'Sarah Chen', position: 'Senior Software Engineer', type: 'Technical Interview', time: '10:00 AM', date: 'Today', interviewer: 'John Smith', status: 'Scheduled', avatar: '👩‍💻' },
-  { id: 2, candidate: 'Marcus Johnson', position: 'Product Manager', type: 'Phone Screen', time: '2:00 PM', date: 'Today', interviewer: 'Jane Doe', status: 'Scheduled', avatar: '👨‍💼' },
-  { id: 3, candidate: 'Alexandra Patel', position: 'DevOps Engineer', type: 'Culture Fit', time: '11:30 AM', date: 'Tomorrow', interviewer: 'Mike Chen', status: 'Confirmed', avatar: '👩‍🔧' },
-  { id: 4, candidate: 'Emily Rodriguez', position: 'UX Designer', type: 'Portfolio Review', time: '3:00 PM', date: 'Tomorrow', interviewer: 'Lisa Wang', status: 'Pending', avatar: '👩‍🎨' },
-];
-
-const pipelineStages = [
-  { id: 'new', name: 'New', count: 24, color: '#00D4FF' },
-  { id: 'screening', name: 'Screening', count: 18, color: '#7B61FF' },
-  { id: 'interview', name: 'Interview', count: 12, color: '#FFB800' },
-  { id: 'offer', name: 'Offer', count: 5, color: '#00E5A0' },
-  { id: 'hired', name: 'Hired', count: 3, color: '#FF6B35' },
+const mockInterviewsData = [
+  { id: 1, candidate: 'Priya Sharma', position: 'Senior Software Engineer', type: 'Technical Interview', time: '10:00 AM', date: 'Today', interviewer: 'Rajesh Kumar', status: 'Scheduled', avatar: '👩‍💻' },
+  { id: 2, candidate: 'Rahul Verma', position: 'Product Manager', type: 'Phone Screen', time: '2:00 PM', date: 'Today', interviewer: 'Sneha Gupta', status: 'Scheduled', avatar: '👨‍💼' },
+  { id: 3, candidate: 'Kavitha Reddy', position: 'DevOps Engineer', type: 'Culture Fit', time: '11:30 AM', date: 'Tomorrow', interviewer: 'Amit Joshi', status: 'Confirmed', avatar: '👩‍🔧' },
+  { id: 4, candidate: 'Anita Patel', position: 'UX Designer', type: 'Portfolio Review', time: '3:00 PM', date: 'Tomorrow', interviewer: 'Meera Shah', status: 'Pending', avatar: '👩‍🎨' },
 ];
 
 // ============================================================================
@@ -537,21 +551,56 @@ export default function TalentForgeATS() {
 // DASHBOARD VIEW
 // ============================================================================
 function DashboardView() {
-  const stats = [
-    { label: 'Total Candidates', value: '1,248', change: '+12.5%', trend: 'up', icon: Icons.Users, color: '#00D4FF' },
-    { label: 'Active Jobs', value: '24', change: '+3', trend: 'up', icon: Icons.Briefcase, color: '#7B61FF' },
-    { label: 'Interviews Today', value: '8', change: '2 pending', trend: 'neutral', icon: Icons.Calendar, color: '#FFB800' },
-    { label: 'Offers Sent', value: '5', change: '+2 this week', trend: 'up', icon: Icons.Award, color: '#00E5A0' },
+  const [stats, setStats] = useState(defaultStats);
+  const [candidates, setCandidates] = useState(defaultCandidates);
+  const [interviews, setInterviews] = useState(defaultInterviews);
+  const [pipeline, setPipeline] = useState(defaultPipeline);
+  const [activity, setActivity] = useState(defaultActivity);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [statsRes, candidatesRes, interviewsRes, pipelineRes, activityRes] = await Promise.all([
+          fetch(`${API_BASE}/dashboard/stats`),
+          fetch(`${API_BASE}/dashboard/candidates`),
+          fetch(`${API_BASE}/dashboard/interviews`),
+          fetch(`${API_BASE}/dashboard/pipeline`),
+          fetch(`${API_BASE}/dashboard/activity`)
+        ]);
+        
+        if (statsRes.ok) setStats(await statsRes.json());
+        if (candidatesRes.ok) setCandidates(await candidatesRes.json());
+        if (interviewsRes.ok) setInterviews(await interviewsRes.json());
+        if (pipelineRes.ok) setPipeline(await pipelineRes.json());
+        if (activityRes.ok) setActivity(await activityRes.json());
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchDashboardData();
+  }, []);
+
+  const statsDisplay = [
+    { label: 'Total Candidates', value: stats.total_candidates?.toString() || '0', change: 'From database', trend: 'up', icon: Icons.Users, color: '#00D4FF' },
+    { label: 'Active Jobs', value: stats.active_jobs?.toString() || '0', change: 'Open positions', trend: 'up', icon: Icons.Briefcase, color: '#7B61FF' },
+    { label: 'Interviews Today', value: stats.interviews_today?.toString() || '0', change: 'Scheduled', trend: 'neutral', icon: Icons.Calendar, color: '#FFB800' },
+    { label: 'Offers Sent', value: stats.offers_sent?.toString() || '0', change: 'Pending', trend: 'up', icon: Icons.Award, color: '#00E5A0' },
   ];
+
+  const maxPipelineCount = Math.max(...pipeline.map(s => s.count), 1);
 
   return (
     <div style={styles.dashboardContainer}>
       {/* Welcome Section */}
       <div style={styles.welcomeSection}>
         <div style={styles.welcomeContent}>
-          <h1 style={styles.welcomeTitle}>Good morning, John! 👋</h1>
+          <h1 style={styles.welcomeTitle}>Good morning! 👋</h1>
           <p style={styles.welcomeSubtitle}>
-            You have <span style={styles.highlight}>12 new applications</span> and <span style={styles.highlight}>4 interviews</span> scheduled today.
+            You have <span style={styles.highlight}>{stats.total_candidates} candidates</span> and <span style={styles.highlight}>{stats.interviews_today} interviews</span> scheduled.
           </p>
         </div>
         <div style={styles.welcomeActions}>
@@ -568,7 +617,7 @@ function DashboardView() {
 
       {/* Stats Grid */}
       <div style={styles.statsGrid}>
-        {stats.map((stat, index) => (
+        {statsDisplay.map((stat, index) => (
           <div key={index} style={styles.statCard} className="stat-card">
             <div style={styles.statHeader}>
               <div style={{...styles.statIcon, background: `${stat.color}22`, color: stat.color}}>
@@ -583,7 +632,7 @@ function DashboardView() {
                 {stat.change}
               </div>
             </div>
-            <div style={styles.statValue}>{stat.value}</div>
+            <div style={styles.statValue}>{loading ? '...' : stat.value}</div>
             <div style={styles.statLabel}>{stat.label}</div>
             <div style={{...styles.statGlow, background: `radial-gradient(circle at 50% 100%, ${stat.color}15 0%, transparent 70%)`}} />
           </div>
@@ -599,7 +648,7 @@ function DashboardView() {
             <button style={styles.cardAction}>View All</button>
           </div>
           <div style={styles.pipelineStages}>
-            {pipelineStages.map((stage, index) => (
+            {pipeline.map((stage, index) => (
               <div key={stage.id} style={styles.pipelineStage}>
                 <div style={styles.pipelineStageHeader}>
                   <span style={styles.pipelineStageName}>{stage.name}</span>
@@ -608,11 +657,11 @@ function DashboardView() {
                 <div style={styles.pipelineBar}>
                   <div style={{
                     ...styles.pipelineBarFill,
-                    width: `${(stage.count / 24) * 100}%`,
+                    width: `${(stage.count / maxPipelineCount) * 100}%`,
                     background: `linear-gradient(90deg, ${stage.color}, ${stage.color}88)`,
                   }} />
                 </div>
-                {index < pipelineStages.length - 1 && (
+                {index < pipeline.length - 1 && (
                   <div style={styles.pipelineConnector}>
                     <Icons.ChevronRight />
                   </div>
@@ -625,11 +674,13 @@ function DashboardView() {
         {/* Today's Interviews */}
         <div style={styles.interviewsCard}>
           <div style={styles.cardHeader}>
-            <h3 style={styles.cardTitle}>Today's Interviews</h3>
+            <h3 style={styles.cardTitle}>Upcoming Interviews</h3>
             <button style={styles.cardAction}>Schedule</button>
           </div>
           <div style={styles.interviewsList}>
-            {mockInterviews.slice(0, 3).map((interview) => (
+            {interviews.length === 0 && !loading ? (
+              <div style={{padding: '20px', textAlign: 'center', color: '#8F9BB3'}}>No upcoming interviews</div>
+            ) : interviews.slice(0, 3).map((interview) => (
               <div key={interview.id} style={styles.interviewItem}>
                 <div style={styles.interviewTime}>
                   <span style={styles.interviewTimeText}>{interview.time}</span>
@@ -661,9 +712,11 @@ function DashboardView() {
             <button style={styles.cardAction}>View All</button>
           </div>
           <div style={styles.candidatesList}>
-            {mockCandidates.slice(0, 4).map((candidate) => (
+            {candidates.length === 0 && !loading ? (
+              <div style={{padding: '20px', textAlign: 'center', color: '#8F9BB3'}}>No candidates found</div>
+            ) : candidates.slice(0, 4).map((candidate) => (
               <div key={candidate.id} style={styles.candidateItem}>
-                <div style={styles.candidateAvatar}>{candidate.avatar}</div>
+                <div style={styles.candidateAvatar}>{candidate.avatar || '👤'}</div>
                 <div style={styles.candidateInfo}>
                   <span style={styles.candidateName}>{candidate.name}</span>
                   <span style={styles.candidateTitle}>{candidate.title}</span>
@@ -706,21 +759,18 @@ function DashboardView() {
             <button style={styles.cardAction}>View All</button>
           </div>
           <div style={styles.activityList}>
-            {[
-              { action: 'New application received', detail: 'Sarah Chen applied for Senior Software Engineer', time: '5 min ago', icon: '📥', color: '#00D4FF' },
-              { action: 'Interview completed', detail: 'Marcus Johnson - Phone Screen', time: '1 hour ago', icon: '✅', color: '#00E5A0' },
-              { action: 'Offer accepted', detail: 'David Kim accepted the Data Scientist offer', time: '2 hours ago', icon: '🎉', color: '#7B61FF' },
-              { action: 'New job posted', detail: 'Frontend Developer position is now live', time: '3 hours ago', icon: '📢', color: '#FFB800' },
-            ].map((activity, index) => (
+            {activity.length === 0 && !loading ? (
+              <div style={{padding: '20px', textAlign: 'center', color: '#8F9BB3'}}>No recent activity</div>
+            ) : activity.map((item, index) => (
               <div key={index} style={styles.activityItem}>
-                <div style={{...styles.activityIcon, background: `${activity.color}22`}}>
-                  {activity.icon}
+                <div style={{...styles.activityIcon, background: `${item.color}22`}}>
+                  {item.icon}
                 </div>
                 <div style={styles.activityContent}>
-                  <span style={styles.activityAction}>{activity.action}</span>
-                  <span style={styles.activityDetail}>{activity.detail}</span>
+                  <span style={styles.activityAction}>{item.action}</span>
+                  <span style={styles.activityDetail}>{item.detail}</span>
                 </div>
-                <span style={styles.activityTime}>{activity.time}</span>
+                <span style={styles.activityTime}>{item.time}</span>
               </div>
             ))}
           </div>

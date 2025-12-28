@@ -4,21 +4,26 @@
   "description": "TalentForge - AI-Powered Applicant Tracking System",
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "client": "vite",
+    "server": "node server/index.js",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write \"src/**/*.{js,jsx,css,json}\""
   },
   "dependencies": {
+    "clsx": "^2.0.0",
+    "concurrently": "^9.2.1",
+    "date-fns": "^2.30.0",
+    "express": "^5.2.1",
+    "framer-motion": "^10.16.0",
+    "lucide-react": "^0.294.0",
+    "pg": "^8.16.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
-    "framer-motion": "^10.16.0",
     "recharts": "^2.10.0",
-    "date-fns": "^2.30.0",
-    "lucide-react": "^0.294.0",
-    "clsx": "^2.0.0",
     "zustand": "^4.4.0"
   },
   "devDependencies": {
