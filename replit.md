@@ -54,6 +54,15 @@ docs/                # Documentation
 - `npm run format` - Format code with Prettier
 
 ## Recent Changes
+- December 28, 2025: Complete Candidate Detail View with Resume Storage
+  - Added GET /api/candidates/:id endpoint to fetch complete candidate details with all related data
+  - CandidateDetailPage now fetches full details from API including skills, education, experience, projects
+  - Resume files permanently saved in uploads/resumes/ directory with path stored in database
+  - Resume tab shows PDF preview (iframe) for PDF files and download button for all formats
+  - Skills displayed with proficiency-based color coding (expert=green, advanced=cyan, others=purple)
+  - Experience and education shown in timeline format with dates
+  - Projects displayed with technologies as tags
+  - Added /uploads proxy route for serving static resume files
 - December 28, 2025: Comprehensive Resume Parsing with Full Database Persistence
   - Enhanced AI parsing to extract ALL resume details (not just basic info)
   - Extracts: personal info, summary, skills (with proficiency), education, experience, projects, certifications

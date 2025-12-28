@@ -558,6 +558,19 @@ Return ONLY valid JSON, no explanation.`;
     const projectsData = parsed.PROJECTS || parsed.projects || [];
     const certificationsData = parsed.CERTIFICATIONS || parsed.certifications || [];
     
+    const resumesDir = path.join(__dirname, '..', 'uploads', 'resumes');
+    if (!fs.existsSync(resumesDir)) {
+      fs.mkdirSync(resumesDir, { recursive: true });
+    }
+    
+    const timestamp = Date.now();
+    const safeOriginalName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const savedFileName = `${timestamp}_${safeOriginalName}`;
+    const savedFilePath = path.join(resumesDir, savedFileName);
+    
+    fs.copyFileSync(filePath, savedFilePath);
+    const resumeUrl = `/uploads/resumes/${savedFileName}`;
+    
     res.json({
       success: true,
       data: {
@@ -576,6 +589,7 @@ Return ONLY valid JSON, no explanation.`;
         experience: experienceData,
         projects: projectsData,
         certifications: certificationsData,
+        resumeUrl: resumeUrl,
       }
     });
   } catch (err) {
@@ -593,7 +607,8 @@ app.post('/api/candidates', async (req, res) => {
   try {
     const { 
       firstName, lastName, email, phone, currentTitle, currentCompany, location,
-      linkedinUrl, portfolioUrl, summary, skills, education, experience, projects, certifications 
+      linkedinUrl, portfolioUrl, summary, skills, education, experience, projects, certifications,
+      resumeUrl
     } = req.body;
     
     if (!firstName || !lastName || !email) {
@@ -614,11 +629,11 @@ app.post('/api/candidates', async (req, res) => {
       `INSERT INTO candidates (
         organization_id, first_name, last_name, email, phone,
         current_title, current_company, city_id, linkedin_url, portfolio_url,
-        profile_summary, status, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', NOW(), NOW())
+        profile_summary, resume_url, status, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active', NOW(), NOW())
       RETURNING id, first_name, last_name, email`,
       [orgId, firstName, lastName, email, phone || null, currentTitle || null, 
-       currentCompany || null, cityId, linkedinUrl || null, portfolioUrl || null, summary || null]
+       currentCompany || null, cityId, linkedinUrl || null, portfolioUrl || null, summary || null, resumeUrl || null]
     );
     
     const candidateId = candidateResult.rows[0].id;
@@ -784,6 +799,71 @@ function parseDate(dateStr) {
   }
   return null;
 }
+
+app.get('/api/candidates/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const candidateResult = await pool.query(`
+      SELECT 
+        c.*,
+        ci.name as city_name,
+        co.name as country_name
+      FROM candidates c
+      LEFT JOIN cities ci ON c.city_id = ci.id
+      LEFT JOIN countries co ON c.country_id = co.id
+      WHERE c.id = $1
+    `, [id]);
+    
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const candidate = candidateResult.rows[0];
+    
+    const skillsResult = await pool.query(`
+      SELECT cs.*, s.display_name as skill_name, s.canonical_name
+      FROM candidate_skills cs
+      JOIN skills s ON cs.skill_id = s.id
+      WHERE cs.candidate_id = $1
+      ORDER BY cs.sort_order, s.display_name
+    `, [id]);
+    
+    const educationResult = await pool.query(`
+      SELECT *
+      FROM candidate_education
+      WHERE candidate_id = $1
+      ORDER BY sort_order, end_date DESC NULLS FIRST
+    `, [id]);
+    
+    const experienceResult = await pool.query(`
+      SELECT *
+      FROM candidate_experience
+      WHERE candidate_id = $1
+      ORDER BY sort_order, end_date DESC NULLS FIRST
+    `, [id]);
+    
+    const projectsResult = await pool.query(`
+      SELECT *
+      FROM candidate_projects
+      WHERE candidate_id = $1
+      ORDER BY sort_order
+    `, [id]);
+    
+    res.json({
+      ...candidate,
+      skills: skillsResult.rows,
+      education: educationResult.rows,
+      experience: experienceResult.rows,
+      projects: projectsResult.rows
+    });
+  } catch (err) {
+    console.error('Error fetching candidate:', err);
+    res.status(500).json({ error: 'Failed to fetch candidate' });
+  }
+});
+
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 const PORT = 3001;
 app.listen(PORT, '0.0.0.0', () => {

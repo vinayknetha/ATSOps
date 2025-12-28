@@ -1238,6 +1238,7 @@ function AddCandidatePage({ onBack, onSave }) {
     experience: [],
     projects: [],
     certifications: [],
+    resumeUrl: '',
   });
   const fileInputRef = React.useRef(null);
 
@@ -1280,6 +1281,7 @@ function AddCandidatePage({ onBack, onSave }) {
           experience: result.data.experience || [],
           projects: result.data.projects || [],
           certifications: result.data.certifications || [],
+          resumeUrl: result.data.resumeUrl || '',
         });
         console.log('Resume parsed with:', {
           skills: result.data.skills?.length || 0,
@@ -1545,6 +1547,24 @@ function AddCandidatePage({ onBack, onSave }) {
 // ============================================================================
 function CandidateDetailPage({ candidate, onBack }) {
   const [activeTab, setActiveTab] = useState('overview');
+  const [fullCandidate, setFullCandidate] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (candidate?.id) {
+      setLoading(true);
+      fetch(`/api/candidates/${candidate.id}`)
+        .then(res => res.json())
+        .then(data => {
+          setFullCandidate(data);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error('Error fetching candidate:', err);
+          setLoading(false);
+        });
+    }
+  }, [candidate?.id]);
 
   if (!candidate) {
     return (
@@ -1558,10 +1578,19 @@ function CandidateDetailPage({ candidate, onBack }) {
     );
   }
 
+  const c = fullCandidate || candidate;
+  const candidateName = c.first_name ? `${c.first_name} ${c.last_name}` : c.name;
+
   const breadcrumbItems = [
     { label: 'Candidates', onClick: onBack },
-    { label: candidate.name }
+    { label: candidateName }
   ];
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  };
 
   return (
     <div style={styles.pageContainer}>
@@ -1571,12 +1600,12 @@ function CandidateDetailPage({ candidate, onBack }) {
         <div style={styles.candidateDetailInfo}>
           <div style={styles.profileAvatarLarge}>{candidate.avatar || '👤'}</div>
           <div>
-            <h1 style={styles.pageTitle}>{candidate.name}</h1>
-            <p style={styles.pageSubtitle}>{candidate.title} at {candidate.company}</p>
+            <h1 style={styles.pageTitle}>{candidateName}</h1>
+            <p style={styles.pageSubtitle}>{c.current_title || c.title} at {c.current_company || c.company}</p>
             <div style={styles.candidateDetailMeta}>
-              <span><Icons.MapPin /> {candidate.location}</span>
-              <span><Icons.Briefcase /> {candidate.experience || 'N/A'}</span>
-              <span><Icons.Clock /> Applied {candidate.appliedDate}</span>
+              <span><Icons.MapPin /> {c.city_name || c.location || 'India'}</span>
+              <span><Icons.Briefcase /> {c.total_experience_years ? `${c.total_experience_years} years` : 'N/A'}</span>
+              <span><Icons.Clock /> Applied Recently</span>
             </div>
           </div>
         </div>
@@ -1601,12 +1630,12 @@ function CandidateDetailPage({ candidate, onBack }) {
               fill="none"
               stroke={candidate.score >= 90 ? '#00E5A0' : candidate.score >= 80 ? '#00D4FF' : '#FFB800'}
               strokeWidth="8"
-              strokeDasharray={`${(candidate.score / 100) * 283} 283`}
+              strokeDasharray={`${((candidate.score || 0) / 100) * 283} 283`}
               strokeLinecap="round"
               transform="rotate(-90 50 50)"
             />
           </svg>
-          <span style={styles.scoreValue}>{candidate.score}</span>
+          <span style={styles.scoreValue}>{candidate.score || 0}</span>
         </div>
         <span style={styles.scoreLabel}>Match Score</span>
       </div>
@@ -1627,53 +1656,149 @@ function CandidateDetailPage({ candidate, onBack }) {
       </div>
 
       <div style={styles.profileContent}>
-        {activeTab === 'overview' && (
+        {loading && <p style={{ color: '#8F9BB3' }}>Loading candidate details...</p>}
+        
+        {activeTab === 'overview' && !loading && (
           <>
+            {c.profile_summary && (
+              <div style={styles.profileSection}>
+                <h4 style={styles.sectionTitle}>Summary</h4>
+                <p style={{ color: '#E4E9F2', lineHeight: 1.6 }}>{c.profile_summary}</p>
+              </div>
+            )}
+
             <div style={styles.profileSection}>
-              <h4 style={styles.sectionTitle}>Skills</h4>
+              <h4 style={styles.sectionTitle}>Skills ({(c.skills || []).length})</h4>
               <div style={styles.skillsGrid}>
-                {(candidate.skills || []).map((skill, idx) => (
-                  <span key={idx} style={styles.skillTagLarge}>{skill}</span>
+                {(c.skills || []).map((skill, idx) => (
+                  <span key={idx} style={{
+                    ...styles.skillTagLarge,
+                    background: skill.proficiency_level === 'expert' ? '#00E5A022' : 
+                               skill.proficiency_level === 'advanced' ? '#00D4FF22' : '#7B61FF22',
+                    borderColor: skill.proficiency_level === 'expert' ? '#00E5A0' : 
+                                skill.proficiency_level === 'advanced' ? '#00D4FF' : '#7B61FF',
+                  }}>
+                    {skill.skill_name || skill}
+                    {skill.years_of_experience && <small style={{marginLeft: 4, opacity: 0.7}}>({skill.years_of_experience}y)</small>}
+                  </span>
                 ))}
-                {(!candidate.skills || candidate.skills.length === 0) && (
+                {(!c.skills || c.skills.length === 0) && (
                   <span style={{ color: '#8F9BB3' }}>No skills listed</span>
                 )}
               </div>
             </div>
 
-            <div style={styles.profileSection}>
-              <h4 style={styles.sectionTitle}>AI Analysis</h4>
-              <div style={styles.aiAnalysis}>
-                <div style={styles.aiAnalysisHeader}>
-                  <Icons.Sparkles />
-                  <span>TalentForge AI</span>
-                </div>
-                <p style={styles.aiAnalysisText}>
-                  Strong candidate with excellent technical skills and relevant experience. 
-                  Exceeds requirements in most areas. Recommended for technical interview.
-                </p>
+            {Array.isArray(c.experience) && c.experience.length > 0 && (
+              <div style={styles.profileSection}>
+                <h4 style={styles.sectionTitle}>Experience</h4>
+                {c.experience.map((exp, idx) => (
+                  <div key={idx} style={{ marginBottom: '1.5rem', paddingLeft: '1rem', borderLeft: '2px solid #7B61FF' }}>
+                    <h5 style={{ color: '#fff', marginBottom: '0.25rem' }}>{exp.title}</h5>
+                    <p style={{ color: '#00D4FF', marginBottom: '0.5rem' }}>{exp.company_name}</p>
+                    <p style={{ color: '#8F9BB3', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                      {formatDate(exp.start_date)} - {exp.is_current ? 'Present' : formatDate(exp.end_date)}
+                      {exp.location_text && ` • ${exp.location_text}`}
+                    </p>
+                    {exp.description && <p style={{ color: '#E4E9F2', fontSize: '0.875rem' }}>{exp.description}</p>}
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
+
+            {Array.isArray(c.education) && c.education.length > 0 && (
+              <div style={styles.profileSection}>
+                <h4 style={styles.sectionTitle}>Education</h4>
+                {c.education.map((edu, idx) => (
+                  <div key={idx} style={{ marginBottom: '1rem', paddingLeft: '1rem', borderLeft: '2px solid #00D4FF' }}>
+                    <h5 style={{ color: '#fff', marginBottom: '0.25rem' }}>{edu.degree_name || 'Degree'}</h5>
+                    <p style={{ color: '#00D4FF', marginBottom: '0.25rem' }}>{edu.institution_name}</p>
+                    {edu.field_of_study_text && <p style={{ color: '#8F9BB3', fontSize: '0.875rem' }}>{edu.field_of_study_text}</p>}
+                    <p style={{ color: '#8F9BB3', fontSize: '0.875rem' }}>
+                      {formatDate(edu.start_date)} - {edu.is_current ? 'Present' : formatDate(edu.end_date)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {Array.isArray(c.projects) && c.projects.length > 0 && (
+              <div style={styles.profileSection}>
+                <h4 style={styles.sectionTitle}>Projects</h4>
+                {c.projects.map((proj, idx) => (
+                  <div key={idx} style={{ marginBottom: '1rem', padding: '1rem', background: '#1A2942', borderRadius: '8px' }}>
+                    <h5 style={{ color: '#fff', marginBottom: '0.25rem' }}>{proj.name}</h5>
+                    {proj.role && <p style={{ color: '#00D4FF', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{proj.role}</p>}
+                    {proj.description && <p style={{ color: '#E4E9F2', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{proj.description}</p>}
+                    {proj.technologies && proj.technologies.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        {proj.technologies.map((tech, i) => (
+                          <span key={i} style={{ background: '#0A1628', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', color: '#8F9BB3' }}>{tech}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div style={styles.profileSection}>
               <h4 style={styles.sectionTitle}>Contact</h4>
               <div style={styles.contactList}>
                 <div style={styles.contactItem}>
                   <Icons.Mail />
-                  <span>{candidate.name?.toLowerCase().replace(' ', '.')}@email.com</span>
+                  <span>{c.email}</span>
                 </div>
-                <div style={styles.contactItem}>
-                  <Icons.Phone />
-                  <span>+91 98765 43210</span>
-                </div>
+                {c.phone && (
+                  <div style={styles.contactItem}>
+                    <Icons.Phone />
+                    <span>{c.phone}</span>
+                  </div>
+                )}
+                {c.linkedin_url && (
+                  <div style={styles.contactItem}>
+                    <Icons.Link />
+                    <a href={c.linkedin_url} target="_blank" rel="noopener noreferrer" style={{ color: '#00D4FF' }}>LinkedIn</a>
+                  </div>
+                )}
               </div>
             </div>
           </>
         )}
 
-        {activeTab === 'resume' && (
+        {activeTab === 'resume' && !loading && (
           <div style={styles.profileSection}>
-            <p style={{ color: '#8F9BB3' }}>Resume content will be displayed here.</p>
+            {c.resume_url ? (
+              <div>
+                <h4 style={styles.sectionTitle}>Uploaded Resume</h4>
+                <div style={{ marginTop: '1rem', padding: '1.5rem', background: '#1A2942', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <Icons.FileText style={{ width: 32, height: 32, color: '#00D4FF' }} />
+                    <div>
+                      <p style={{ color: '#fff', marginBottom: '0.25rem' }}>Resume</p>
+                      <p style={{ color: '#8F9BB3', fontSize: '0.875rem' }}>{c.resume_url.split('/').pop()}</p>
+                    </div>
+                  </div>
+                  <a 
+                    href={c.resume_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ ...styles.primaryBtn, textDecoration: 'none' }}
+                  >
+                    <Icons.Download />
+                    Download
+                  </a>
+                </div>
+                {c.resume_url.endsWith('.pdf') && (
+                  <iframe 
+                    src={c.resume_url} 
+                    style={{ width: '100%', height: '600px', marginTop: '1rem', border: 'none', borderRadius: '8px' }}
+                    title="Resume Preview"
+                  />
+                )}
+              </div>
+            ) : (
+              <p style={{ color: '#8F9BB3' }}>No resume uploaded for this candidate.</p>
+            )}
           </div>
         )}
 
