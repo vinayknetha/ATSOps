@@ -1221,6 +1221,41 @@ function CandidatesView({ onSelectCandidate }) {
               </button>
             </div>
             <div style={styles.modalBody}>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Resume</label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept=".pdf,.doc,.docx"
+                  style={{ display: 'none' }}
+                />
+                <div
+                  style={{
+                    ...styles.fileUpload,
+                    borderColor: uploadedFile ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
+                  }}
+                  onClick={handleFileClick}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                >
+                  {uploadedFile ? (
+                    <>
+                      <Icons.Check />
+                      <span style={{ color: '#00D68F' }}>{uploadedFile.name}</span>
+                      <span style={styles.fileHint}>
+                        {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Icons.Upload />
+                      <span>Click to upload or drag and drop</span>
+                      <span style={styles.fileHint}>PDF, DOC up to 10MB</span>
+                    </>
+                  )}
+                </div>
+              </div>
               <div style={styles.formRow}>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>First Name *</label>
@@ -1258,41 +1293,6 @@ function CandidatesView({ onSelectCandidate }) {
                   <option value="hyderabad">Hyderabad</option>
                   <option value="pune">Pune</option>
                 </select>
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Resume</label>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept=".pdf,.doc,.docx"
-                  style={{ display: 'none' }}
-                />
-                <div
-                  style={{
-                    ...styles.fileUpload,
-                    borderColor: uploadedFile ? '#00D68F' : 'rgba(255, 255, 255, 0.1)',
-                  }}
-                  onClick={handleFileClick}
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                >
-                  {uploadedFile ? (
-                    <>
-                      <Icons.Check />
-                      <span style={{ color: '#00D68F' }}>{uploadedFile.name}</span>
-                      <span style={styles.fileHint}>
-                        {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <Icons.Upload />
-                      <span>Click to upload or drag and drop</span>
-                      <span style={styles.fileHint}>PDF, DOC up to 10MB</span>
-                    </>
-                  )}
-                </div>
               </div>
             </div>
             <div style={styles.modalFooter}>
