@@ -385,7 +385,9 @@ app.post('/api/resume/parse', upload.single('resume'), async (req, res) => {
         pdfParser.on('pdfParser_dataError', (errData) => reject(errData.parserError));
         pdfParser.on('pdfParser_dataReady', (pdfData) => {
           const rawText = pdfParser.getRawTextContent();
-          resolve(rawText);
+          const decodedText = decodeURIComponent(rawText.replace(/\r\n/g, ' '));
+          console.log('Extracted PDF text length:', decodedText.length);
+          resolve(decodedText);
         });
         pdfParser.loadPDF(filePath);
       });
