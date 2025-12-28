@@ -614,7 +614,7 @@ app.post('/api/candidates', async (req, res) => {
       `INSERT INTO candidates (
         organization_id, first_name, last_name, email, phone,
         current_title, current_company, city_id, linkedin_url, portfolio_url,
-        summary, status, created_at, updated_at
+        profile_summary, status, created_at, updated_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', NOW(), NOW())
       RETURNING id, first_name, last_name, email`,
       [orgId, firstName, lastName, email, phone || null, currentTitle || null, 
