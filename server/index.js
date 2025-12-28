@@ -551,24 +551,31 @@ Return ONLY valid JSON, no explanation.`;
     
     console.log('Parsed resume data:', JSON.stringify(parsed, null, 2));
     
+    const personalInfo = parsed.PERSONAL_INFO || parsed.personalInfo || parsed;
+    const skillsData = parsed.SKILLS || parsed.skills || [];
+    const educationData = parsed.EDUCATION || parsed.education || [];
+    const experienceData = parsed.EXPERIENCE || parsed.experience || [];
+    const projectsData = parsed.PROJECTS || parsed.projects || [];
+    const certificationsData = parsed.CERTIFICATIONS || parsed.certifications || [];
+    
     res.json({
       success: true,
       data: {
-        firstName: parsed.firstName || '',
-        lastName: parsed.lastName || '',
-        email: parsed.email || '',
-        phone: parsed.phone || '',
-        currentTitle: parsed.currentTitle || '',
-        currentCompany: parsed.currentCompany || '',
-        location: parsed.location || '',
-        linkedinUrl: parsed.linkedinUrl || '',
-        portfolioUrl: parsed.portfolioUrl || '',
-        summary: parsed.summary || '',
-        skills: parsed.skills || [],
-        education: parsed.education || [],
-        experience: parsed.experience || [],
-        projects: parsed.projects || [],
-        certifications: parsed.certifications || [],
+        firstName: personalInfo.firstName || parsed.firstName || '',
+        lastName: personalInfo.lastName || parsed.lastName || '',
+        email: personalInfo.email || parsed.email || '',
+        phone: personalInfo.phone || parsed.phone || '',
+        currentTitle: personalInfo.currentTitle || parsed.currentTitle || '',
+        currentCompany: personalInfo.currentCompany || parsed.currentCompany || '',
+        location: personalInfo.location || parsed.location || '',
+        linkedinUrl: personalInfo.linkedinUrl || parsed.linkedinUrl || '',
+        portfolioUrl: personalInfo.portfolioUrl || parsed.portfolioUrl || '',
+        summary: personalInfo.summary || parsed.summary || '',
+        skills: skillsData,
+        education: educationData,
+        experience: experienceData,
+        projects: projectsData,
+        certifications: certificationsData,
       }
     });
   } catch (err) {
